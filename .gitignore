@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+
+# Special Files/Directories
+.idea
+Other Player's Bots
+en-US-7-0.bdic
+test/lib
