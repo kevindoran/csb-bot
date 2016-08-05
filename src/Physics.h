@@ -15,9 +15,9 @@ class Physics {
 public:
     static PodState move(const Race& race, const PodState& pod, double acc, double angle, double time);
     static bool passedCheckpoint(Vector beforePos, Vector afterPos, Checkpoint checkpoint);
-    double angleBetween(Vector from, Vector to);
-    double radToDegrees(double radians);
-    double turnAngle(PodState pod, Vector target);
+    static double angleBetween(Vector from, Vector to);
+    static double radToDegrees(double radians);
+    static double turnAngle(PodState pod, Vector target);
 };
 
 

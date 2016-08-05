@@ -6,15 +6,9 @@
 
 
 PodOutput Navigation::seek(PodState pod, Vector target, int max_acc) {
-    Vector dir = (target - pod.pos).normalize();
-    Vector good_component = dir.project(pod.vel);
-    Vector bad_component = pod.vel - good_component;
-    double remainderSq = max_acc*max_acc - bad_component.getLengthSq();
-    Vector thrust = -bad_component;
-    if(remainderSq > 0) {
-        thrust += dir * sqrt(remainderSq);
-    } else {
-        thrust *= ((double)max_acc) / thrust.getLength();
-    }
-    return PodOutput(thrust.getLength(), thrust * 10 + pod.pos);
+    Vector desired_vel = (target - pod.pos) * 0.5;
+    Vector vel_diff = desired_vel - pod.vel;
+    Vector thrust = vel_diff * (max_acc / vel_diff.getLength());
+    return PodOutput(thrust.getLength(), vel_diff + pod.pos);
 }
+
