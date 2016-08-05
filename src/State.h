@@ -12,6 +12,14 @@
 
 using namespace std;
 
+
+static const int MAX_THRUST = 200;
+static const int MAX_ANGLE = 18;
+static constexpr double DRAG = 0.85;
+static const int POD_COUNT = 2;
+static const int PLAYER_COUNT = 2;
+static const int CHECKPOINT_WIDTH = 600;
+
 struct Checkpoint {
     const Vector pos;
     const int order;
@@ -21,9 +29,6 @@ struct Checkpoint {
 };
 
 struct Race {
-    static const int POD_COUNT = 2;
-    static const int PLAYER_COUNT = 2;
-    static const int CHECKPOINT_WIDTH = 600;
     const int laps;
     const vector<Checkpoint> checkpoints;
 //    const int CHECKPOINT_COUNT;
@@ -77,12 +82,12 @@ struct GameState {
 
 struct PodOutput {
     const int thrust;
-    const Vector direction;
+    const Vector dir;
     static const int BOOST = -1;
     static const int SHIELD = -2;
 
     PodOutput(int thrust, Vector direction) :
-            thrust(thrust), direction(direction) {}
+            thrust(thrust), dir(direction) {}
 
     string toString() {
         stringstream out;
@@ -94,7 +99,7 @@ struct PodOutput {
         } else {
             thrustStr = to_string((int)thrust);
         }
-        out << (int) direction.x << " " << (int) direction.y << " " << thrustStr;
+        out << (int) dir.x << " " << (int) dir.y << " " << thrustStr;
         return out.str();
     }
 };

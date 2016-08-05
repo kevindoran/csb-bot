@@ -9,15 +9,12 @@
 #include "Vector.h"
 
 class Physics {
-    static const int MAX_THRUST = 200;
-    static const int MAX_ANGLE = 18;
-    static constexpr double DRAG = 0.85;
 public:
     static PodState move(const Race& race, const PodState& pod, double acc, double angle, double time);
-    static bool passedCheckpoint(Vector beforePos, Vector afterPos, Checkpoint checkpoint);
-    static double angleBetween(Vector from, Vector to);
+    static bool passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint);
+    static double angleBetween(const Vector& from, const Vector& to);
     static double radToDegrees(double radians);
-    static double turnAngle(PodState pod, Vector target);
+    static double turnAngle(const PodState& pod, const Vector& target);
 };
 
 

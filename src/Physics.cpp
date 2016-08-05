@@ -11,7 +11,7 @@
 #include "State.h"
 
 
-double Physics::turnAngle(PodState pod, Vector target) {
+double Physics::turnAngle(const PodState& pod, const Vector& target) {
     // turn angle = min(turn_left_angle, turn_right_angle)
     double target_angle = Physics::angleBetween(pod.pos, target);
     double turn_left = pod.angle > target_angle ? pod.angle - target_angle : 2*M_PI - target_angle + pod.angle;
@@ -26,12 +26,12 @@ double Physics::turnAngle(PodState pod, Vector target) {
 
 PodState Physics::move(const Race& race, const PodState& pod, double acc, double angle, double time) {
     // Angle
-    if(angle < - Physics::MAX_ANGLE) angle = -Physics::MAX_ANGLE;
-    else if(angle > Physics::MAX_ANGLE) angle = Physics::MAX_ANGLE;
+    if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
+    else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
     int nextAngle = pod.angle + angle;
     // Apply thrust
     Vector accVector = Vector::fromMagAngle(acc, nextAngle);
-    Vector newSpeed = (pod.vel + accVector) * Physics::DRAG;
+    Vector newSpeed = (pod.vel + accVector) * DRAG;
     Vector pos = pod.pos + newSpeed * time;
     // Passed checkpoint test.
     int nextCheckpoint = pod.nextCheckpoint;
@@ -46,13 +46,13 @@ PodState Physics::move(const Race& race, const PodState& pod, double acc, double
 /**
  * Calculate intersetion of travel path and checkpoint radius (line-circle intersection).
  */
-bool Physics::passedCheckpoint(Vector beforePos, Vector afterPos, Checkpoint checkpoint) {
+bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint) {
     Vector D = afterPos -beforePos;
     Vector F = beforePos - checkpoint.pos;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
     long a = D.dotProduct(D);
     long b = 2 * F.dotProduct(D);
-    long c = F.dotProduct(F) - Race::CHECKPOINT_WIDTH * Race::CHECKPOINT_WIDTH;
+    long c = F.dotProduct(F) - CHECKPOINT_WIDTH * CHECKPOINT_WIDTH;
     long discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
         return false;
@@ -66,7 +66,7 @@ bool Physics::passedCheckpoint(Vector beforePos, Vector afterPos, Checkpoint che
 /**
  * @return angle between 0 and 2*pi
  */
-double Physics::angleBetween(Vector from, Vector to) {
+double Physics::angleBetween(const Vector& from, const Vector& to) {
     double angle = acos(from.dotProduct(to) / (double) (from.getLength() * to.getLength()));
     if(to.y < from.y) {
         angle = 2*M_PI - angle;

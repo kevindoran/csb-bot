@@ -29,7 +29,7 @@ public:
         return Vector(magnitude * cos(angle), magnitude * sin(angle));
     }
 
-    Vector project(Vector p) const {
+    Vector project(const Vector& p) const {
         return (*this * (dotProduct(p) / getLengthSq()));
     }
 

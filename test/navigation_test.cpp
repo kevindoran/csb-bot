@@ -17,8 +17,8 @@ TEST(NavigationTest, seek) {
     int max_acc = 100;
     PodOutput po = nav.seek(ps, target, max_acc);
     Vector pre_computed_ans(-55, -83);
-    double po_x = po.direction.x * po.thrust / po.direction.getLength();
-    double po_y = po.direction.y * po.thrust / po.direction.getLength();
+    double po_x = po.dir.x * po.thrust / po.dir.getLength();
+    double po_y = po.dir.y * po.thrust / po.dir.getLength();
     double po_x_rounded = round(po_x);
     double po_y_rounded = round(po_y);
     EXPECT_EQ(po_x_rounded, pre_computed_ans.x);

@@ -23,9 +23,9 @@ void InputParser::init() {
 
 GameState InputParser::parseGameState() {
     vector<PlayerState> playerStates;
-    for(int i = 0; i < Race::PLAYER_COUNT; i++) {
+    for(int i = 0; i < PLAYER_COUNT; i++) {
         vector<PodState> podStates;
-        for(int p = 0; p < Race::POD_COUNT; p++) {
+        for(int p = 0; p < POD_COUNT; p++) {
             int x, y, vx, vy, angle, nextCheckpoint;
             stream >> x >> y >> vx >> vy >> angle >> nextCheckpoint;
             PodState* pod = new PodState(x, y, vx, vy, angle, nextCheckpoint);
