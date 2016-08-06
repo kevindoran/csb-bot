@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "Navigation.h"
+#include "Physics.h"
 
 using namespace std;
 
@@ -28,8 +29,10 @@ class MinimalBot : PodraceBot {
 public:
     MinimalBot(int racer) : _racer(racer), nav() {};
     PodOutput move(GameState& gameState) {
-        Checkpoint ck = gameState.race.checkpoints[gameState.ourState().pods[_racer].nextCheckpoint];
-        PodOutput move = nav.seek(gameState.ourState().pods[_racer], ck.pos, 100);
+        PodState pod = gameState.ourState().pods[_racer];
+        Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
+//        PodOutput move = nav.seek(gameState.ourState().pods[_racer], ck.pos, 100);
+        PodOutput move = nav.turnSaturationAdjust(pod, nav.seek(gameState.ourState().pods[_racer], ck.pos, 100));
         return move;//PodOutput(100, ck.pos);
     }
 };

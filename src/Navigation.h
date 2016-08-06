@@ -11,7 +11,7 @@ class Navigation {
 public:
     PodOutput seek(const PodState& pod, const Vector& target, int max_acc);
 
-    PodOutput turn_saturation_adjust(const PodState& pod, const PodOutput& control);
+    PodOutput turnSaturationAdjust(const PodState &pod, const PodOutput &control);
 };
 
 

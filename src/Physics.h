@@ -15,6 +15,7 @@ public:
     static double angleBetween(const Vector& from, const Vector& to);
     static double radToDegrees(double radians);
     static double turnAngle(const PodState& pod, const Vector& target);
+    static double angleTo(const Vector &fromPoint, const Vector &toPoint);
 };
 
 

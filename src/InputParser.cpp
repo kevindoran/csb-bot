@@ -1,6 +1,8 @@
 //
 // Created by Kevin on 1/08/2016.
 //
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 #include "InputParser.h"
 #include "State.h"
@@ -28,7 +30,8 @@ GameState InputParser::parseGameState() {
         for(int p = 0; p < POD_COUNT; p++) {
             int x, y, vx, vy, angle, nextCheckpoint;
             stream >> x >> y >> vx >> vy >> angle >> nextCheckpoint;
-            PodState* pod = new PodState(x, y, vx, vy, angle, nextCheckpoint);
+            double angleRad =M_PI * (angle / 180.0);
+            PodState* pod = new PodState(x, y, vx, vy, angleRad, nextCheckpoint);
             podStates.push_back(*pod);
         }
         PlayerState* ps = new PlayerState(i, podStates);

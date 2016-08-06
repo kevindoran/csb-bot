@@ -17,8 +17,6 @@ add_custom_command(TARGET deploy POST_BUILD
 
 add_executable(main src/main.cpp)
 target_link_libraries(main PodracerBot)
-#add_library(merged STATIC merged.cpp)
 add_executable(merged merged.cpp)
 add_dependencies(merged deploy)
-#target_link_libraries(merged PodracerBot)
 

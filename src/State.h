@@ -5,6 +5,9 @@
 #ifndef CODERSSTRIKEBACKC_GAMESTATE_H
 #define CODERSSTRIKEBACKC_GAMESTATE_H
 
+
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -14,7 +17,8 @@ using namespace std;
 
 
 static const int MAX_THRUST = 200;
-static const int MAX_ANGLE = 18;
+static const int MAX_ANGLE_DEG = 15;
+static constexpr double MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
 static constexpr double DRAG = 0.85;
 static const int POD_COUNT = 2;
 static const int PLAYER_COUNT = 2;
@@ -41,13 +45,13 @@ struct PodState {
     const Vector pos;
     const Vector vel;
     // In radians
-    const int angle;
+    const double angle;
     const int nextCheckpoint;
 
-    PodState(int x, int y, int vx, int vy, int angle, int nextCheckpoint) :
+    PodState(int x, int y, int vx, int vy, double angle, int nextCheckpoint) :
             pos(x, y), vel(vx, vy), angle(angle), nextCheckpoint(nextCheckpoint) { }
 
-    PodState(Vector pos, Vector vel, int angle, int nextCheckpoint) :
+    PodState(Vector pos, Vector vel, double angle, int nextCheckpoint) :
             pos(pos), vel(vel), angle(angle), nextCheckpoint(nextCheckpoint) {}
 
     bool operator ==(const PodState& other) const {
@@ -81,12 +85,12 @@ struct GameState {
 };
 
 struct PodOutput {
-    const int thrust;
+    const double thrust;
     const Vector dir;
     static const int BOOST = -1;
     static const int SHIELD = -2;
 
-    PodOutput(int thrust, Vector direction) :
+    PodOutput(double thrust, Vector direction) :
             thrust(thrust), dir(direction) {}
 
     string toString() {

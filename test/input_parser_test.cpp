@@ -33,11 +33,12 @@ TEST(InputParseTest, basic) {
         Vector cp2(1, 3);
         EXPECT_EQ(cp1, ip.getRace().checkpoints[0].pos);
         EXPECT_EQ(cp2, ip.getRace().checkpoints[1].pos);
-
         GameState gs = ip.parseGameState();
         Vector p1pod1(1, 1);
         Vector p1pod2(4, 0);
         EXPECT_EQ(p1pod1, gs.ourState().pods[0].pos);
         EXPECT_EQ(p1pod2, gs.ourState().pods[1].pos);
+        double angle1 = M_PI / 2;
+        EXPECT_DOUBLE_EQ(angle1, gs.ourState().pods[0].angle);
 }
 
