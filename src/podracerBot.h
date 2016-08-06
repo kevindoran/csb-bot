@@ -25,14 +25,15 @@ public:
 
 class MinimalBot : PodraceBot {
     int _racer;
-    Navigation nav;
 public:
-    MinimalBot(int racer) : _racer(racer), nav() {};
+    MinimalBot(int racer) : _racer(racer) {};
     PodOutput move(GameState& gameState) {
+        Navigation nav(gameState.race);
         PodState pod = gameState.ourState().pods[_racer];
         Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
 //        PodOutput move = nav.seek(gameState.ourState().pods[_racer], ck.pos, 100);
-        PodOutput move = nav.turnSaturationAdjust(pod, nav.seek(gameState.ourState().pods[_racer], ck.pos, 100));
+//        PodOutput move = nav.turnSaturationAdjust(pod, nav.seek(gameState.ourState().pods[_racer], ck.pos, 100));
+        PodOutput move = nav.preemptSeek(pod);
         return move;//PodOutput(100, ck.pos);
     }
 };

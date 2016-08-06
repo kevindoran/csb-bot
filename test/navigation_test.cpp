@@ -6,7 +6,8 @@
 #include "Navigation.h"
 
 TEST(NavigationTest, seek_thrust_below_max) {
-    Navigation nav;
+    Race r(1, {});
+    Navigation nav(r);
     Vector pos(200, 200);
     Vector vel(100, 100);
     int angle = M_PI * 30 / 180;
@@ -19,14 +20,15 @@ TEST(NavigationTest, seek_thrust_below_max) {
     for(int i = 0; i < 1000; i+= 50) {
         for(int j = 0; j < 1000; j+=50) {
             target = Vector(i, j);
-            PodOutput po2 = nav.seek(ps, target, max_acc);
+            PodOutput po2 = nav.seek(ps, target);
             EXPECT_LE((int)po2.thrust, max_acc) << "Thrust should not exceed max acceleration";
         }
     }
 }
 
 TEST(NavigationTest, turn_saturation_adjusted) {
-    Navigation nav;
+    Navigation nav(Race(1, {}));
+    Race r(1, {});
     Vector pos(200, 200);
     Vector vel(200, 0);
     Vector target(400, 400);

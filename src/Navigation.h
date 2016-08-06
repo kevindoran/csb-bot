@@ -6,12 +6,21 @@
 #define CODERSSTRIKEBACKC_NAVIGATION_H
 
 #include "State.h"
+#include "Physics.h"
 
 class Navigation {
+    Race race;
+    Physics physics;
+    double geometric_sum(double a, double r, int r1, int r2);
 public:
-    PodOutput seek(const PodState& pod, const Vector& target, int max_acc);
+    Navigation(const Race& race) : race(race), physics(race) {}
+
+    PodOutput seek(const PodState& pod, const Vector& target);
 
     PodOutput turnSaturationAdjust(const PodState &pod, const PodOutput &control);
+
+    PodOutput preemptSeek(const PodState &pod);
+
 };
 
 

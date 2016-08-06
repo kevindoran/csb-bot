@@ -27,24 +27,24 @@ double Physics::turnAngle(const PodState& pod, const Vector& target) {
     }
 }
 
-PodState Physics::move(const Race& race, const PodState& pod, double acc, double angle, double time) {
-    // Angle
+PodState Physics::move(const PodState& pod, const PodOutput& control, double time) {
+    double angle = Physics::angleTo(pod.pos, control.target);
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
     else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
-    int nextAngle = pod.angle + angle;
-    // Apply thrust
-    Vector accVector = Vector::fromMagAngle(acc, nextAngle);
-    Vector newSpeed = (pod.vel + accVector) * DRAG;
+    Vector force = Vector::fromMagAngle(control.thrust, angle);
+    Vector newSpeed = (pod.vel + force) * DRAG;
     Vector pos = pod.pos + newSpeed * time;
     // Passed checkpoint test.
     int nextCheckpoint = pod.nextCheckpoint;
     if(passedCheckpoint(pod.pos, pos, race.checkpoints[pod.nextCheckpoint])) {
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
+    double newAngle = pod.angle + angle;
     // Need rounding somewhere, or maybe just truncating.
-    PodState* nextState = new PodState(pos, newSpeed, (int)nextAngle, nextCheckpoint);
-    return *nextState;
+    PodState nextState = PodState(pos, newSpeed, newAngle, nextCheckpoint);
+    return nextState;
 }
+
 
 /**
  * Calculate intersetion of travel path and checkpoint radius (line-circle intersection).
@@ -55,7 +55,7 @@ bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, 
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
     long a = D.dotProduct(D);
     long b = 2 * F.dotProduct(D);
-    long c = F.dotProduct(F) - CHECKPOINT_WIDTH * CHECKPOINT_WIDTH;
+    long c = F.dotProduct(F) - CHECKPOINT_RADIUS * CHECKPOINT_RADIUS;
     long discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
         return false;

@@ -23,54 +23,57 @@ protected:
      */
     Race *race;
     PodState *podState;
-    Physics physics;
+    Physics* physics;
 
     virtual void TearDown() {
-        delete race;
-        delete podState;
     }
 
     virtual void SetUp() {
+    }
+
+public:
+    PhysicsTest() : Test() {
         Checkpoint cp1(1000, 1000, 0);
         Checkpoint cp2(2000, 3000, 1);
         vector<Checkpoint> v{cp1, cp2};
         int laps = 2;
         race = new Race(laps, v);
+        physics = new Physics(*race);
         podState = new PodState(3000, 0, 0, 0, 0, 0);
     }
 
-public:
-    PhysicsTest() : Test() {
+    ~PhysicsTest() {
+        delete race;
+        delete podState;
+        delete physics;
     }
 };
 
 TEST_F(PhysicsTest, simpleMove) {
         double acc = 100;
-        double angle = 0;
         PodState expected(3085, 0, 85, 0, 0, 0);
-        PodState afterMove = physics.move(*race, *podState, acc, angle, 1);
+        PodOutput po(acc, Vector(1, 0)); // angle = 0.
+        PodState afterMove = physics->move(*podState, po, 1);
         EXPECT_EQ(expected.pos, afterMove.pos);
         EXPECT_EQ(expected.vel, afterMove.vel);
         EXPECT_EQ(expected.angle, afterMove.angle);
         EXPECT_EQ(expected.nextCheckpoint, afterMove.nextCheckpoint);
 }
 
-// Needs to have a different test case name, as it doesn't take
-// a fixture, so must be in a different test case than the one above.
-TEST(PhysicsTest2, angleTo) {
+TEST_F(PhysicsTest, angleTo) {
     Vector a(200, 200);
     Vector b(200, 400);
     int expectedAngle = M_PI / 2;
-    int ans = Physics::angleTo(a, b);
+    int ans = physics->angleTo(a, b);
     EXPECT_EQ(expectedAngle, ans);
 
     Vector c(200, 0);
     expectedAngle = M_PI * 3/2;
-    ans = Physics::angleTo(a, c);
+    ans = physics->angleTo(a, c);
     EXPECT_EQ(expectedAngle, ans);
 }
 
-TEST(PhysicsTest2, turnAngle) {
+TEST_F(PhysicsTest, turnAngle) {
     Vector pos(200, 200);
     Vector vel(100, 0);
     double facingAngle = M_PI / 2;
@@ -82,12 +85,12 @@ TEST(PhysicsTest2, turnAngle) {
     Vector targetD(150, 400); // Below to the west (turn right), ~0deg.
     Vector targetE(250, 400); // Below to the east (turn left) ~ 0deg.
 
-    double turnA = Physics::turnAngle(ps, targetA);
-    double turnA2 = Physics::turnAngle(ps, targetA2);
-    double turnB = Physics::turnAngle(ps, targetB);
-    double turnC = Physics::turnAngle(ps, targetC);
-    double turnD = Physics::turnAngle(ps, targetD);
-    double turnE = Physics::turnAngle(ps, targetE);
+    double turnA = physics->turnAngle(ps, targetA);
+    double turnA2 = physics->turnAngle(ps, targetA2);
+    double turnB = physics->turnAngle(ps, targetB);
+    double turnC = physics->turnAngle(ps, targetC);
+    double turnD = physics->turnAngle(ps, targetD);
+    double turnE = physics->turnAngle(ps, targetE);
     double abs_error = 0.000000001;
     EXPECT_NEAR(M_PI, abs(turnA), abs_error);
     EXPECT_NEAR(0, turnA2, abs_error);

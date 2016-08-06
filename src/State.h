@@ -16,25 +16,25 @@
 using namespace std;
 
 
-static const int MAX_THRUST = 200;
+static const int MAX_THRUST = 100;
 static const int MAX_ANGLE_DEG = 15;
 static constexpr double MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
 static constexpr double DRAG = 0.85;
 static const int POD_COUNT = 2;
 static const int PLAYER_COUNT = 2;
-static const int CHECKPOINT_WIDTH = 600;
+static const int CHECKPOINT_RADIUS = 600;
 
 struct Checkpoint {
-    const Vector pos;
-    const int order;
+    Vector pos;
+    int order;
 
     Checkpoint(int x, int y, int order) :
             pos(x, y), order(order) {}
 };
 
 struct Race {
-    const int laps;
-    const vector<Checkpoint> checkpoints;
+    int laps;
+    vector<Checkpoint> checkpoints;
 //    const int CHECKPOINT_COUNT;
 
     Race(int laps, vector<Checkpoint> checkpoints) :
@@ -42,11 +42,11 @@ struct Race {
 };
 
 struct PodState {
-    const Vector pos;
-    const Vector vel;
+    Vector pos;
+    Vector vel;
     // In radians
-    const double angle;
-    const int nextCheckpoint;
+    double angle;
+    int nextCheckpoint;
 
     PodState(int x, int y, int vx, int vy, double angle, int nextCheckpoint) :
             pos(x, y), vel(vx, vy), angle(angle), nextCheckpoint(nextCheckpoint) { }
@@ -71,10 +71,10 @@ struct PlayerState {
 };
 
 struct GameState {
-    const Race race;
-    const vector<PlayerState> playerStates;
-    const int ourPlayerId;
-    const int turn;
+    Race race;
+    vector<PlayerState> playerStates;
+    int ourPlayerId;
+    int turn;
 
     GameState(Race race, vector<PlayerState>& playerStates, int ourPlayerId, int turn) :
             race(race), playerStates(playerStates), ourPlayerId(ourPlayerId), turn(turn) {}
@@ -85,13 +85,13 @@ struct GameState {
 };
 
 struct PodOutput {
-    const double thrust;
-    const Vector dir;
+    double thrust; // double or int? Game treats it as int, but maybe double might be useful elsewhere.
+    Vector target;
     static const int BOOST = -1;
     static const int SHIELD = -2;
 
     PodOutput(double thrust, Vector direction) :
-            thrust(thrust), dir(direction) {}
+            thrust(thrust), target(direction) {}
 
     string toString() {
         stringstream out;
@@ -103,7 +103,7 @@ struct PodOutput {
         } else {
             thrustStr = to_string((int)thrust);
         }
-        out << (int) dir.x << " " << (int) dir.y << " " << thrustStr;
+        out << (int) target.x << " " << (int) target.y << " " << thrustStr;
         return out.str();
     }
 };

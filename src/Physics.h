@@ -9,13 +9,17 @@
 #include "Vector.h"
 
 class Physics {
+    Race race;
 public:
-    static PodState move(const Race& race, const PodState& pod, double acc, double angle, double time);
-    static bool passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint);
-    static double angleBetween(const Vector& from, const Vector& to);
-    static double radToDegrees(double radians);
-    static double turnAngle(const PodState& pod, const Vector& target);
-    static double angleTo(const Vector &fromPoint, const Vector &toPoint);
+    Physics(const Race& race) : race(race) {}
+    PodState move(const PodState& pod, const PodOutput& control, double time);
+    bool passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint);
+    double angleBetween(const Vector& from, const Vector& to);
+    double radToDegrees(double radians);
+    double turnAngle(const PodState& pod, const Vector& target);
+    double angleTo(const Vector &fromPoint, const Vector &toPoint);
+    Vector forceVector(const PodState &appliedTo, const PodOutput &control);
+
 };
 
 
