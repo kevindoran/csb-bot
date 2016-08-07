@@ -39,5 +39,32 @@ GameState InputParser::parseGameState() {
     }
     const int OUR_ID = 0; // Possible move this to race if it is indeed true.
     GameState gs = GameState(*race, playerStates, OUR_ID, turn++);
+    // Update info about lead and lagging pods of each player. Useful for choosing which steering
+    // strategy to use on each pod and to be able to attack the leading enemy pod.
+    cerr << "yoyo" << endl;
+    if(isPreviousState) {
+        for(int i = 0; i < PLAYER_COUNT; i++) {
+            PlayerState playerState = gs.playerStates[i];
+            playerState.leadPodID = previous.playerStates[i].leadPodID;
+            for(int p = 0; p < POD_COUNT; p++) {
+                playerState.pods[p].passedCheckpoints = previous.playerStates[i].pods[p].passedCheckpoints;
+                playerState.pods[p].passedCheckpoints = previous.playerStates[i].pods[p].turnsSinceCP;
+                int previousCP = previous.playerStates[i].pods[p].nextCheckpoint;
+                int currentCP = playerState.pods[p].nextCheckpoint;
+                if(currentCP != previousCP) {
+                    // Passed a checkpoint. Progress.
+                    int passed = ++playerState.pods[p].passedCheckpoints;
+                    cerr << "Passed: " << passed << endl;
+                    if(passed > playerState.leadPod().passedCheckpoints) {
+                        playerState.leadPodID = p;
+                    } else {
+                        playerState.pods[p].turnsSinceCP++;
+                    }
+                }
+            }
+        }
+    }
+    isPreviousState = true;
+    previous = gs;
     return gs;
 }

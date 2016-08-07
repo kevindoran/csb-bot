@@ -13,6 +13,8 @@ class Navigation {
     Physics physics;
     double geometric_sum(double a, double r, int r1, int r2);
 public:
+    int turnsUntilReached(const PodState &podInit, Vector target, double withinDist);
+
     Navigation(const Race& race) : race(race), physics(race) {}
 
     PodOutput seek(const PodState& pod, const Vector& target);
@@ -21,6 +23,9 @@ public:
 
     PodOutput preemptSeek(const PodState &pod);
 
+    PodOutput intercept(const PodState &pod, const PodState &enemy);
+
+    Vector find_intercept(const PodState &pod, const PodState &enemy);
 };
 
 

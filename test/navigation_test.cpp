@@ -50,3 +50,31 @@ TEST(NavigationTest, turn_saturation_adjusted) {
     EXPECT_EQ(acc, adjusted3.thrust) << "Turn angle is below max, and thrust should not be affected.";
 }
 
+
+TEST(NavigationTest, turnsUntilReached) {
+    // Need to specific at least 1 checkpoint or the physic's move method will have undefined behaviour.
+    Navigation nav(Race(1, {Checkpoint(0,0,0)}));
+    Vector pos(200, 0);
+    Vector vel(100, 0);
+    double angle = 0;
+    Vector target(1000, 0);
+    PodState ps(pos, vel, angle, 0);
+    double withinDist = 100;
+    int turns = nav.turnsUntilReached(ps, target, withinDist);
+    int precalculatedAns = 4;
+    EXPECT_EQ(precalculatedAns, turns);
+}
+
+TEST(NavigationTest, findIntecept) {
+    Navigation nav(Race(1, {Checkpoint(0,0,0)}));
+    Vector pos(9335, 977);
+    Vector vel(0, 0);
+    double angle = M_PI * (145 / 180);
+    PodState ps(pos, vel, angle, 0);
+
+    // enemy
+    Vector posE(10238, 2761);
+    PodState psE(posE, vel, angle, 0);
+    ASSERT_NO_FATAL_FAILURE(nav.find_intercept(ps, psE));
+}
+

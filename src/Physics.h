@@ -20,6 +20,7 @@ public:
     double angleTo(const Vector &fromPoint, const Vector &toPoint);
     Vector forceVector(const PodState &appliedTo, const PodOutput &control);
 
+    bool passedPoint(const Vector &beforePos, const Vector &afterPos, const Vector &target, double radius);
 };
 
 

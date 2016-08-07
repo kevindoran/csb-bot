@@ -28,10 +28,11 @@ double Physics::turnAngle(const PodState& pod, const Vector& target) {
 }
 
 PodState Physics::move(const PodState& pod, const PodOutput& control, double time) {
-    double angle = Physics::angleTo(pod.pos, control.target);
+    double angle = Physics::angleTo(pod.pos, control.target) - pod.angle;
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
     else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
-    Vector force = Vector::fromMagAngle(control.thrust, angle);
+    double newAngle = pod.angle + angle;
+    Vector force = Vector::fromMagAngle(control.thrust, newAngle);
     Vector newSpeed = (pod.vel + force) * DRAG;
     Vector pos = pod.pos + newSpeed * time;
     // Passed checkpoint test.
@@ -39,7 +40,6 @@ PodState Physics::move(const PodState& pod, const PodOutput& control, double tim
     if(passedCheckpoint(pod.pos, pos, race.checkpoints[pod.nextCheckpoint])) {
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
-    double newAngle = pod.angle + angle;
     // Need rounding somewhere, or maybe just truncating.
     PodState nextState = PodState(pos, newSpeed, newAngle, nextCheckpoint);
     return nextState;
@@ -50,12 +50,15 @@ PodState Physics::move(const PodState& pod, const PodOutput& control, double tim
  * Calculate intersetion of travel path and checkpoint radius (line-circle intersection).
  */
 bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint) {
+    return passedPoint(beforePos, afterPos, checkpoint.pos, CHECKPOINT_RADIUS);
+}
+bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const Vector& target, double radius) {
     Vector D = afterPos -beforePos;
-    Vector F = beforePos - checkpoint.pos;
+    Vector F = beforePos - target;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
     long a = D.dotProduct(D);
     long b = 2 * F.dotProduct(D);
-    long c = F.dotProduct(F) - CHECKPOINT_RADIUS * CHECKPOINT_RADIUS;
+    long c = F.dotProduct(F) - radius * radius;
     long discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
         return false;

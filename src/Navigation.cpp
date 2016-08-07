@@ -31,8 +31,6 @@ PodOutput Navigation::turnSaturationAdjust(const PodState& pod, const PodOutput&
     double angle_threshold = M_PI * (15.0 / 180.0); // 15 degrees in radians.
     double turn_angle = abs(physics.turnAngle(pod, control.target));
     double acc = control.thrust;
-    cerr << "Angle: " << pod.angle << "  Thrust: " << acc << "  Control dir: (" << control.target.x << ", " << control.target.y
-         << ")  Turn angle: " << turn_angle << endl;
     if(turn_angle > cut_off) {
         acc = 0;
     } else if(turn_angle > angle_threshold) {
@@ -40,9 +38,7 @@ PodOutput Navigation::turnSaturationAdjust(const PodState& pod, const PodOutput&
         // minus angle_threshold to delay the speed dip. Like a truncated normal distribution.
         // Times 0.3 to spread out the distribution (SD = 0.3). Otherwise, there is only a range of 0-1SD.
         double spread = 0.3;
-        cerr << "Before acc: " << acc << endl;
         acc *= normal_cdf_half(spread * (turn_angle - angle_threshold) / (cut_off - angle_threshold));
-        cerr << "After acc: " << acc << endl;
     }
     PodOutput adjusted(acc, control.target);
     return adjusted;
@@ -74,24 +70,63 @@ PodOutput Navigation::preemptSeek(const PodState& pod) {
     }
 }
 
+PodOutput Navigation::intercept(const PodState& pod, const PodState& enemy) {
+    return seek(pod, find_intercept(pod, enemy));
+}
+
 
 double Navigation::geometric_sum(double a, double r, int r1, int r2) {
     return (a * pow(r,r1) - a * pow(r,(r2 + 1))) / (1 - r);
 }
 
-// Use interpolation to estimate where the pod will glide to. It is incorrect to
-// simulate the game to determine the number of moves, as the bot will change behaviour
-// if the required moves is low enough.
-//int Navigation::turnsUntilPassCP(const PodState& podInit, int cutoff) {
-//    int cp = podInit.nextCheckpoint;
-//    PodState pod = podInit;
-//    int i = 1;
-//    for(bool reachedCP = false; i <= cutoff && !reachedCP; i++) {
-//        PodOutput control = turnSaturationAdjust(pod, seek(pod, race.checkpoints[cp].pos, 0));
-//        pod = physics.move(pod, control, 1);
-//        if(pod.nextCheckpoint != cp) {
-//            reachedCP = true;
-//        }
-//    }
-//    return i;
-//}
+Vector Navigation::find_intercept(const PodState& pod, const PodState& enemy) {
+    int accept_range = 700;
+    Vector intercept_path = race.checkpoints[enemy.nextCheckpoint].pos - enemy.pos;
+    double low = 0;
+    double high = intercept_path.getLength();
+    Vector midPoint;
+    int ourLastTime = -1;
+    int enemyLastTime = -1;
+    int close_enough = 0;
+    int ourTime = 0;
+    int enemyTime = ourTime + close_enough + 1;
+    while (abs(ourTime - enemyTime) > close_enough && low < high) {
+        double mid = low + (high - low) / 2;
+        midPoint = enemy.pos + intercept_path * (mid / intercept_path.getLength());
+        ourTime = turnsUntilReached(pod, midPoint, accept_range);
+        // I am using an approximation of the enemy's movement algorithm.
+        enemyTime = turnsUntilReached(enemy, midPoint, accept_range);
+        cerr << "Our time: " << ourTime << "  Their time: " << enemyTime << endl;
+        if (ourTime > enemyTime) {
+            low = mid;
+        } else if (ourTime < enemyTime) {
+            high = mid;
+        }
+        if(ourTime == ourLastTime && enemyTime == enemyLastTime) break;
+        ourLastTime = ourTime;
+        enemyLastTime = enemyTime;
+    }
+    if (abs(ourTime - enemyTime) <= close_enough) {
+        return midPoint;
+    } else {
+        int enemyNextNextCP = (enemy.nextCheckpoint + 1) % race.checkpoints.size();
+        return race.checkpoints[enemyNextNextCP].pos;
+    }
+}
+
+int Navigation::turnsUntilReached(const PodState& podInit, Vector target, double withinDist) {
+    int maxTurns = 30;
+    PodState pod = podInit;
+    PodState previous = podInit;
+    PodOutput control;
+    int i = 0;
+    while((target - pod.pos).getLength() > withinDist &&  !physics.passedPoint(previous.pos, pod.pos, target, withinDist)) {
+        control = turnSaturationAdjust(pod, seek(pod, target));
+        pod = physics.move(pod, control, 1);
+        i++;
+        // Currently, a bit of a hack to guard agains poor circular seeking behaviour causing endless
+        // circling around the target and causing this method to timeout the bot.
+        if(i >= maxTurns) break;
+    }
+    return i;
+}

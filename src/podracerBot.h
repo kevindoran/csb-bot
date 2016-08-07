@@ -24,18 +24,36 @@ public:
 };
 
 class MinimalBot : PodraceBot {
-    int _racer;
+    int racer;
 public:
-    MinimalBot(int racer) : _racer(racer) {};
+    MinimalBot(int racer) : racer(racer) {};
     PodOutput move(GameState& gameState) {
         Navigation nav(gameState.race);
-        PodState pod = gameState.ourState().pods[_racer];
+        PodState pod = gameState.ourState().pods[racer];
         Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
-//        PodOutput move = nav.seek(gameState.ourState().pods[_racer], ck.pos, 100);
-//        PodOutput move = nav.turnSaturationAdjust(pod, nav.seek(gameState.ourState().pods[_racer], ck.pos, 100));
+//        PodOutput move = nav.seek(gameState.ourState().pods[racer], ck.pos, 100);
+//        PodOutput move = nav.turnSaturationAdjust(pod, nav.seek(gameState.ourState().pods[racer], ck.pos, 100));
         PodOutput move = nav.preemptSeek(pod);
         return move;//PodOutput(100, ck.pos);
     }
+};
+
+class Bouncer : PodraceBot {
+    int racer;
+public:
+    Bouncer(int racer) : racer(racer) {};
+
+    PodOutput move(GameState& gameState) {
+        Navigation nav(gameState.race);
+        PodState pod = gameState.ourState().pods[racer];
+        int returnBuffer = 15;
+        if(pod.turnsSinceCP < WANDER_TIMEOUT - returnBuffer) {
+            return nav.intercept(pod, gameState.enemyState().leadPod());
+        } else {
+            return nav.preemptSeek(pod);
+        }
+    }
+
 };
 
 
