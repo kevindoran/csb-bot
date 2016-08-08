@@ -12,7 +12,6 @@ void State::preTurnUpdate(vector<PlayerState> playerStates) {
                 playerStates[i].pods[p].turnsSinceShield = previous.playerStates[i].pods[p].turnsSinceShield + 1;
                 int previousCP = previous.playerStates[i].pods[p].nextCheckpoint;
                 int currentCP = playerStates[i].pods[p].nextCheckpoint;
-                cerr << "Pod " << p << " passed #" << playerStates[i].pods[p].passedCheckpoints << " checkpoints." << endl;
                 if (currentCP != previousCP) {
                     // Passed a checkpoint. Progress.
                     playerStates[i].pods[p].turnsSinceCP = 0;

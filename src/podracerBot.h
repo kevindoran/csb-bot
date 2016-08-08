@@ -24,6 +24,7 @@ public:
 };
 
 class MinimalBot : PodraceBot {
+    // TODO: got integer overflow (-INF) output on one game. Not sure why.
 public:
     PodOutput move(GameState& gameState, int podID) {
         // Where should these two go...
@@ -49,10 +50,11 @@ public:
             if(move.thrust != PodOutput::SHIELD) {
                 // Maybe best to save last player history so it is easy to get at the lead/lagging pod easily.
                 // Also, better performance if I actually use the real bouncer pod output.
+                double friendlyThreshold = velThreshold/2; // We know our bouncer wont use a shield.
                 const PodState& bouncerPod = gameState.ourState().laggingPod();
                 const PodState& previousBouncerPod = gameState.ourState().lastPods[(gameState.ourState().leadPodID + 1) % PLAYER_COUNT];
                 if(pod.turnsSinceShield >= SHIELD_COOLDOWN && physics.isCollision(pod, move, bouncerPod,
-                                        physics.expectedControl(previousBouncerPod, bouncerPod), velThreshold)) {
+                                        physics.expectedControl(previousBouncerPod, bouncerPod), friendlyThreshold)) {
                     move.enableShield();
                 }
             }
@@ -70,9 +72,23 @@ public:
         PodState& pod = gameState.ourState().pods[podID];
         int returnBuffer = 10;
         PodOutput move;
+        cerr << "Targetting: " << gameState.enemyState().leadPodID << endl;
         if(pod.turnsSinceCP < WANDER_TIMEOUT - returnBuffer) {
-            cerr << "Targetting: " << gameState.enemyState().leadPodID << endl;
-            move = nav.intercept(pod, gameState.enemyState().leadPod());
+            Vector target = nav.find_intercept(pod, gameState.enemyState().leadPod());
+            PodState& leadPod = gameState.enemyState().leadPod();
+            int leadID = gameState.enemyState().leadPodID;
+            // Need a tidier way of finding the nextNextCP.
+            int nextNextCP = (leadPod.nextCheckpoint + 1) % gameState.race.checkpoints.size();
+            if(gameState.turn > 0 && target == gameState.race.checkpoints[nextNextCP].pos) {
+                // Move towards target and spin towards enemy.
+                PodState nextPos = physics.move(leadPod, physics.expectedControl(gameState.enemyState().lastPods[leadID], leadPod), 1);
+                int turnThreshold = 13;
+                int seekThreshold = 2;
+                move =  nav.preemptSeek(pod, gameState.race.checkpoints[nextNextCP].pos, CHECKPOINT_RADIUS, nextPos.pos,
+                    turnThreshold, seekThreshold);
+            } else {
+                move = nav.intercept(pod, gameState.enemyState().leadPod());
+            }
         } else {
             move = nav.preemptSeek(pod);
         }

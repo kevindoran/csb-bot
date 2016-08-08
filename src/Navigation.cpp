@@ -28,7 +28,7 @@ PodOutput Navigation::turnSaturationAdjust(const PodState& pod, const PodOutput&
         return control;
     }
     double cut_off = M_PI / 2 + MAX_ANGLE;
-    double angle_threshold = M_PI * (15.0 / 180.0); // 15 degrees in radians.
+    double angle_threshold = M_PI * (20.0 / 180.0); // 15 degrees in radians.
     double turn_angle = abs(physics.turnAngle(pod, control.target));
     double acc = control.thrust;
     if(turn_angle > cut_off) {
@@ -45,25 +45,29 @@ PodOutput Navigation::turnSaturationAdjust(const PodState& pod, const PodOutput&
 }
 
 PodOutput Navigation::preemptSeek(const PodState& pod, Vector initialTarget, double radius, Vector nextTarget) {
-    int turnThreshold = 8;
-    int switchThreshold = 3;
-    int future_x = pod.pos.x + geometric_sum(pod.vel.x, DRAG, 1, turnThreshold);
-    int future_y = pod.pos.y + geometric_sum(pod.vel.y, DRAG, 1, turnThreshold);
-    Vector future_pos(future_x, future_y);
-    int buffer = 100;
-    if((initialTarget - future_pos).getLength() < radius - buffer) {
-        // Coast and turn towards next CP.
-        int future_x = pod.pos.x + geometric_sum(pod.vel.x, DRAG, 1, switchThreshold);
-        int future_y = pod.pos.y + geometric_sum(pod.vel.y, DRAG, 1, switchThreshold);
-        future_pos = Vector(future_x, future_y);
-        if((initialTarget - future_pos).getLength() < radius - buffer) {
-            // On target very shortly; we can burn torward the next CP.
-            return turnSaturationAdjust(pod, seek(pod, nextTarget));
-        } else {
-            PodOutput po = seek(pod, nextTarget);
-            po.thrust = 0;
-            return po;
+    int defaultTurn = 5; // Disabled
+    int defaultSwitch = 5;
+    return preemptSeek(pod, initialTarget, radius, nextTarget, defaultTurn, defaultSwitch);
+}
+PodOutput Navigation::preemptSeek(const PodState& pod, Vector initialTarget, double radius, Vector nextTarget, int turnThreshold, int switchThreshold) {
+    int i = 0;
+    for(; i <= turnThreshold; i++) {
+        int buffer = i <= switchThreshold ? 40 : 200;
+        int future_x = pod.pos.x + geometric_sum(pod.vel.x, DRAG, 1, i);
+        int future_y = pod.pos.y + geometric_sum(pod.vel.y, DRAG, 1, i);
+        Vector future_pos(future_x, future_y);
+        if ((initialTarget - future_pos).getLength() < radius - buffer) {
+            break;
         }
+    }
+    if(i <= switchThreshold) {
+        // On target very shortly; we can burn torward the next CP.
+        return turnSaturationAdjust(pod, seek(pod, nextTarget));
+    } else if(i <= turnThreshold){
+        // We will drift towards current target, we can turn toward the next CP.
+        PodOutput po = seek(pod, nextTarget);
+        po.thrust = 0;
+        return po;
     } else {
         return turnSaturationAdjust(pod, seek(pod, race.checkpoints[pod.nextCheckpoint].pos));
     }

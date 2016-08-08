@@ -28,6 +28,9 @@ public:
     Vector find_intercept(const PodState &pod, const PodState &enemy);
 
     PodOutput preemptSeek(const PodState &pod, Vector intialTarget, double radius, Vector nextTarget);
+
+    PodOutput preemptSeek(const PodState &pod, Vector initialTarget, double radius, Vector nextTarget, int turnThreshold,
+                          int switchThreshold);
 };
 
 
