@@ -52,7 +52,7 @@ public:
 TEST_F(PhysicsTest, simpleMove) {
         double acc = 100;
         PodState expected(3085, 0, 85, 0, 0, 0);
-        PodOutput po(acc, Vector(1, 0)); // angle = 0.
+        PodOutput po(acc, podState->pos + Vector(1, 0)); // angle = 0.
         PodState afterMove = physics->move(*podState, po, 1);
         EXPECT_EQ(expected.pos, afterMove.pos);
         EXPECT_EQ(expected.vel, afterMove.vel);
@@ -100,9 +100,32 @@ TEST_F(PhysicsTest, turnAngle) {
     EXPECT_NEAR(-atan(50.0/200.0), turnE, abs_error);
 }
 
-TEST(PhysicsTest, turnAngleRealExample) {
-    Vector pos(1063, 4163);
-    Vector target(7088, 3023);
-    Vector vel(-14, -2);
-    Vector controlDir(7088.5, 3023.5);
+//TEST_F(PhysicsTest, turnAngleRealExample) {
+//    Vector pos(1063, 4163);
+//    Vector target(7088, 3023);
+//    Vector vel(-14, -2);
+//    Vector controlDir(7088.5, 3023.5);
+//}
+
+TEST_F(PhysicsTest, isCollision) {
+    // Pod at (0,0) moving at ~250 east and pod at (1200, 0) moving at ~250 west.
+    Vector posA(0,0);
+    Vector velA(200,0);
+    double angleA = 0;
+    PodState psA(posA, velA, angleA, 0);
+    PodOutput controlA(100, posA + Vector(1,0));
+    Vector posB(1200, 0);
+    Vector velB(-200, 0);
+    double angleB = M_PI;
+    PodState psB(posB, velB, angleB, 0);
+    PodOutput controlB(100, posB + Vector(-1,0));
+    double velThreshold = 0; // Just testing any collision.
+    bool isCollision = physics->isCollision(psA, controlA, psB, controlB, velThreshold);
+    EXPECT_TRUE(isCollision);
+
+    // Just out of reach; (v1 + v2 + 2*POD_RADIUS = 1300).
+    posB = Vector(1400, 0);
+    psB = PodState(posB, velB, angleB, 0);
+    isCollision = physics->isCollision(psA, controlA, psB, controlB, velThreshold);
+    EXPECT_FALSE(isCollision);
 }

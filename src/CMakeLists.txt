@@ -14,7 +14,8 @@ set(SOURCE_FILES
         Physics.cpp
         podracerBot.cpp
         Vector.cpp
-        Navigation.cpp)
+        Navigation.cpp
+        State.cpp)
 
 add_library(PodracerBot STATIC ${SOURCE_FILES} ${HEADER_FILES})
 

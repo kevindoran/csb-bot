@@ -37,6 +37,8 @@ PodState Physics::move(const PodState& pod, const PodOutput& control, double tim
     Vector pos = pod.pos + newSpeed * time;
     // Passed checkpoint test.
     int nextCheckpoint = pod.nextCheckpoint;
+    // This checkpoint check can be removed the move method slit into two types (as many uses of
+    // move don't need this reasonably expensive check).
     if(passedCheckpoint(pod.pos, pos, race.checkpoints[pod.nextCheckpoint])) {
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
@@ -69,6 +71,23 @@ bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const
         return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
     }
 }
+
+bool Physics::isCollision(const PodState& podA, const PodOutput& controlA,
+                          const PodState& podB, const PodOutput& controlB, double velThreshold) {
+    PodState aNext = move(podA, controlA, 1);
+    PodState bNext = move(podB, controlB, 1);
+    Vector velDiff = aNext.vel - bNext.vel;
+    bool isCollision = (aNext.pos - bNext.pos).getLength() < 2 * POD_RADIUS;
+    bool meetsVelThreshold = abs(velDiff.getLength()) >= abs(velThreshold);
+    return isCollision && meetsVelThreshold;
+}
+
+PodOutput Physics::expectedControl(const PodState& previous, const PodState& current) {
+    Vector force = (current.vel * (1/DRAG)) - previous.vel;
+    PodOutput control(force.getLength(), current.pos + force);
+    return control;
+}
+
 /**
  * Calculates the angle of the vector from one point to another (measured from the positive x-axis clockwise). In other
  * words, calculate the angle the vector (toPoint - fromPoint) makes with the positive x-axis.

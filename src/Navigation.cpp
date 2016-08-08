@@ -44,30 +44,34 @@ PodOutput Navigation::turnSaturationAdjust(const PodState& pod, const PodOutput&
     return adjusted;
 }
 
-PodOutput Navigation::preemptSeek(const PodState& pod) {
+PodOutput Navigation::preemptSeek(const PodState& pod, Vector initialTarget, double radius, Vector nextTarget) {
     int turnThreshold = 8;
     int switchThreshold = 3;
     int future_x = pod.pos.x + geometric_sum(pod.vel.x, DRAG, 1, turnThreshold);
     int future_y = pod.pos.y + geometric_sum(pod.vel.y, DRAG, 1, turnThreshold);
     Vector future_pos(future_x, future_y);
     int buffer = 100;
-    if((race.checkpoints[pod.nextCheckpoint].pos - future_pos).getLength() < CHECKPOINT_RADIUS - buffer) {
+    if((initialTarget - future_pos).getLength() < radius - buffer) {
         // Coast and turn towards next CP.
-        int nextNextCP = (pod.nextCheckpoint + 1) % race.checkpoints.size();
         int future_x = pod.pos.x + geometric_sum(pod.vel.x, DRAG, 1, switchThreshold);
         int future_y = pod.pos.y + geometric_sum(pod.vel.y, DRAG, 1, switchThreshold);
         future_pos = Vector(future_x, future_y);
-        if((race.checkpoints[pod.nextCheckpoint].pos - future_pos).getLength() < CHECKPOINT_RADIUS - buffer) {
+        if((initialTarget - future_pos).getLength() < radius - buffer) {
             // On target very shortly; we can burn torward the next CP.
-            return turnSaturationAdjust(pod, seek(pod, race.checkpoints[nextNextCP].pos));
+            return turnSaturationAdjust(pod, seek(pod, nextTarget));
         } else {
-            PodOutput po = seek(pod, race.checkpoints[nextNextCP].pos);
+            PodOutput po = seek(pod, nextTarget);
             po.thrust = 0;
             return po;
         }
     } else {
         return turnSaturationAdjust(pod, seek(pod, race.checkpoints[pod.nextCheckpoint].pos));
     }
+}
+
+PodOutput Navigation::preemptSeek(const PodState& pod) {
+    Checkpoint nextCP = race.checkpoints[(pod.nextCheckpoint + 1) % race.checkpoints.size()];
+    return preemptSeek(pod, race.checkpoints[pod.nextCheckpoint].pos, CHECKPOINT_RADIUS, nextCP.pos);
 }
 
 PodOutput Navigation::intercept(const PodState& pod, const PodState& enemy) {
@@ -80,7 +84,7 @@ double Navigation::geometric_sum(double a, double r, int r1, int r2) {
 }
 
 Vector Navigation::find_intercept(const PodState& pod, const PodState& enemy) {
-    int accept_range = 700;
+    int accept_range = 500;
     Vector intercept_path = race.checkpoints[enemy.nextCheckpoint].pos - enemy.pos;
     double low = 0;
     double high = intercept_path.getLength();
@@ -90,13 +94,13 @@ Vector Navigation::find_intercept(const PodState& pod, const PodState& enemy) {
     int close_enough = 0;
     int ourTime = 0;
     int enemyTime = ourTime + close_enough + 1;
+    double aheadBy = 100;
     while (abs(ourTime - enemyTime) > close_enough && low < high) {
         double mid = low + (high - low) / 2;
-        midPoint = enemy.pos + intercept_path * (mid / intercept_path.getLength());
+        midPoint = enemy.pos + intercept_path * (mid / intercept_path.getLength()) + intercept_path.normalize() * aheadBy;
         ourTime = turnsUntilReached(pod, midPoint, accept_range);
         // I am using an approximation of the enemy's movement algorithm.
         enemyTime = turnsUntilReached(enemy, midPoint, accept_range);
-        cerr << "Our time: " << ourTime << "  Their time: " << enemyTime << endl;
         if (ourTime > enemyTime) {
             low = mid;
         } else if (ourTime < enemyTime) {

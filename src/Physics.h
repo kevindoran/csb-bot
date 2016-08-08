@@ -21,6 +21,11 @@ public:
     Vector forceVector(const PodState &appliedTo, const PodOutput &control);
 
     bool passedPoint(const Vector &beforePos, const Vector &afterPos, const Vector &target, double radius);
+
+    bool isCollision(const PodState &podA, const PodOutput &controlA,
+                     const PodState &podB, const PodOutput &controlB, double velThreshold);
+
+    PodOutput expectedControl(const PodState &previous, const PodState &current);
 };
 
 

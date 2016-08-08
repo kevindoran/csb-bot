@@ -10,16 +10,21 @@ int main()
 {
     // game loop
     InputParser inputParser(cin);
-    inputParser.init();
+    Race race = inputParser.init();
+    State state(race);
 
     while (1) {
-        GameState gs = inputParser.parseGameState();
-        // To debug: cerr << "Debug messages..." << endl;
-        MinimalBot bot1(gs.ourState().leadPodID);
-        Bouncer bot2((gs.ourState().leadPodID + 1) % 2);
-        cerr << "Our lead: " << gs.ourState().leadPodID << "  Their lead: " << gs.enemyState().leadPodID << endl;
-        PodOutput po1 = bot1.move(gs);
-        PodOutput po2 = bot2.move(gs);
+        vector<PlayerState> players = inputParser.parseTurn();
+        state.preTurnUpdate(players);
+//        cerr << "Pod1: pos " << state.game().ourState().pods[1].pos << "  vel " << state.game().ourState().pods[0].vel << endl;
+//        cerr << "Pod2: pos " << state.game().ourState().pods[1].pos << "  vel " << state.game().ourState().pods[1].vel << endl;
+        int leadPodID = state.game().ourState().leadPodID;
+        cerr << "Lead ID: " << leadPodID << endl;
+        MinimalBot racer = MinimalBot();
+        Bouncer bouncer = Bouncer();
+        PodOutput po1 = 0 == leadPodID ? racer.move(state.game(), 0) : bouncer.move(state.game(), 0);
+        PodOutput po2 = 1 == leadPodID ? racer.move(state.game(), 1) : bouncer.move(state.game(), 1);
         cout << po1.toString() << endl << po2.toString() << endl;
+        state.postTurnUpdate(po1, po2);
     }
 }
