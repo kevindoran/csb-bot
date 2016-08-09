@@ -74,18 +74,53 @@ bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const
 
 bool Physics::isCollision(const PodState& podA, const PodOutput& controlA,
                           const PodState& podB, const PodOutput& controlB, double velThreshold) {
-    PodState aNext = move(podA, controlA, 1);
-    PodState bNext = move(podB, controlB, 1);
-    Vector velDiff = aNext.vel - bNext.vel;
-    bool isCollision = (aNext.pos - bNext.pos).getLength() < 2 * POD_RADIUS;
-    bool meetsVelThreshold = abs(velDiff.getLength()) >= abs(velThreshold);
-    return isCollision && meetsVelThreshold;
+    return isCollision(podA, controlA, podB, controlB, 1, velThreshold);
 }
+
+bool Physics::isCollision(const PodState &podA, const PodOutput &controlA, const PodState &podB,
+                          const PodOutput &controlB, int turns, double velThreshold) {
+    // Need to repeatedly apply the control. To do this, the relative force must be extracted and then reapplied.
+    Vector relativeForceA = controlA.target - podA.pos;
+    Vector relativeForceB = controlB.target - podB.pos;
+    PodOutput cA = controlA;
+    PodOutput cB = controlB;
+    PodState a = podA;
+    PodState b = podB;
+    for(int i = 0; i < turns; i++) {
+        cA.target = a.pos + relativeForceA;
+        cB.target = b.pos + relativeForceB;
+        a = move(a, cA, 1);
+        b = move(b, cB, 1);
+        Vector velDiff = a.vel - b.vel;
+        bool isCollision = (a.pos - b.pos).getLength() < 2 * POD_RADIUS;
+        bool meetsVelThreshold = abs(velDiff.getLength()) >= abs(velThreshold);
+        if(isCollision && meetsVelThreshold) {
+//            cerr << "Collision at: " << a.pos << " & " << b.pos << endl;
+//            cerr << "A control: " << controlA.thrust << ":" << controlA.target <<
+//                 "   B control: " << controlB.thrust << ":" << controlB.target;
+            return true;
+        }
+    }
+    return false;
+}
+
 
 PodOutput Physics::expectedControl(const PodState& previous, const PodState& current) {
     Vector force = (current.vel * (1/DRAG)) - previous.vel;
     PodOutput control(force.getLength(), current.pos + force);
     return control;
+}
+
+PodState Physics::extrapolate(const PodState& pod, const PodOutput& control, int turns) {
+    Vector relativeForce = control.target - pod.pos;
+    PodOutput updatedControl;
+    // Can either use simulation or geometric sums.
+    PodState p = pod;
+    for(int i = 0; i < turns; i++) {
+        updatedControl = PodOutput(control.thrust, pod.pos + relativeForce);
+        p = move(p, updatedControl, turns);
+    }
+    return p;
 }
 
 /**

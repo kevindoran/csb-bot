@@ -73,6 +73,23 @@ TEST_F(PhysicsTest, angleTo) {
     EXPECT_EQ(expectedAngle, ans);
 }
 
+TEST_F(PhysicsTest, expectedControl) {
+    Vector pos1(200,200);
+    Vector vel1(0,0);
+    double angle = 0;
+    Vector pos2(285, 200);
+    Vector vel2(85, 0);
+
+    PodState ps1(pos1, vel1, angle);
+    PodState ps2(pos2, vel2, angle);
+    PodOutput expectedControl(100, Vector(300,200));
+    double expectedAngle = physics->angleTo(pos1, expectedControl.target);
+    PodOutput ans = physics->expectedControl(ps1, ps2);
+    double ansAngle = physics->angleTo(pos1, ans.target);
+    EXPECT_DOUBLE_EQ(expectedControl.thrust, ans.thrust);
+    EXPECT_DOUBLE_EQ(expectedAngle, ansAngle);
+}
+
 TEST_F(PhysicsTest, turnAngle) {
     Vector pos(200, 200);
     Vector vel(100, 0);

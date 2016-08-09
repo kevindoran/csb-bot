@@ -26,6 +26,12 @@ public:
                      const PodState &podB, const PodOutput &controlB, double velThreshold);
 
     PodOutput expectedControl(const PodState &previous, const PodState &current);
+
+    PodState extrapolate(const PodState &pod, const PodOutput &control, int turns);
+
+    bool
+    isCollision(const PodState &podA, const PodOutput &controlA, const PodState &podB, const PodOutput &controlB, int turns,
+                double velThreshold);
 };
 
 

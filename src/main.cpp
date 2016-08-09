@@ -5,6 +5,7 @@
 #include "InputParser.h"
 #include "podracerBot.h"
 #include "State.h"
+#include <limits>
 
 int main()
 {

@@ -27,6 +27,7 @@ static const int POD_RADIUS = 400;
 static const int WANDER_TIMEOUT = 100;
 static const int SHIELD_COOLDOWN = 3;
 static const int OUR_PLAYER_ID = 0;
+static const int BOOST_VELOCITY = 800;
 
 struct Checkpoint {
     Vector pos;
@@ -39,12 +40,16 @@ struct Checkpoint {
 struct Race {
     int laps;
     vector<Checkpoint> checkpoints;
-//    const int CHECKPOINT_COUNT;
+    double maxCheckpointDist = 0;
 
-    Race() {};
+    Race() {}
 
     Race(int laps, vector<Checkpoint> checkpoints) :
-            laps(laps), checkpoints(checkpoints) {};
+            laps(laps), checkpoints(checkpoints) {
+        for(int i = 0; i < checkpoints.size()-1; i++) {
+            maxCheckpointDist = max(maxCheckpointDist, (checkpoints[i].pos - checkpoints[i+1].pos).getLength());
+        }
+    }
 };
 
 struct PodState {
@@ -63,6 +68,9 @@ struct PodState {
 
     PodState(Vector pos, Vector vel, double angle, int nextCheckpoint) :
             pos(pos), vel(vel), angle(angle), nextCheckpoint(nextCheckpoint) {}
+
+    // Many tests and simulations don't care about the checkpoints.
+    PodState(Vector pos, Vector vel, double angle) : pos(pos), vel(vel), angle(angle) {}
 
     bool operator ==(const PodState& other) const {
         return (pos == other.pos && vel == other.vel && angle == other.angle && nextCheckpoint == other.nextCheckpoint);
@@ -100,7 +108,7 @@ struct GameState {
 
     GameState() {};
 
-    GameState(Race race, vector<PlayerState>& playerStates, int turn) :
+    GameState(Race& race, vector<PlayerState>& playerStates, int turn) :
             race(race), playerStates(playerStates), turn(turn) {}
 
     PlayerState& ourState() {

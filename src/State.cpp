@@ -6,24 +6,33 @@ void State::preTurnUpdate(vector<PlayerState> playerStates) {
         for (int i = 0; i < PLAYER_COUNT; i++) {
             playerStates[i].leadPodID = previous.playerStates[i].leadPodID;
             playerStates[i].lastPods = previous.playerStates[i].pods;
+            vector<int> passed;
             for (int p = 0; p < POD_COUNT; p++) {
                 playerStates[i].pods[p].passedCheckpoints = previous.playerStates[i].pods[p].passedCheckpoints;
                 playerStates[i].pods[p].turnsSinceCP = previous.playerStates[i].pods[p].turnsSinceCP;
                 playerStates[i].pods[p].turnsSinceShield = previous.playerStates[i].pods[p].turnsSinceShield + 1;
+                playerStates[i].pods[p].boostAvailable = previous.playerStates[i].pods[p].boostAvailable;
                 int previousCP = previous.playerStates[i].pods[p].nextCheckpoint;
                 int currentCP = playerStates[i].pods[p].nextCheckpoint;
+                int passedCount;
                 if (currentCP != previousCP) {
                     // Passed a checkpoint. Progress.
                     playerStates[i].pods[p].turnsSinceCP = 0;
-                    int passed = ++playerStates[i].pods[p].passedCheckpoints;
-                    // The current playerStates are fully update until the end of the double for-loop, so we must
-                    // compare to the previous checkpoint counts to avoid errors.
-                    if (passed > previous.playerStates[i].leadPod().passedCheckpoints) {
-                        playerStates[i].leadPodID = p;
-                    }
+                    passedCount = ++playerStates[i].pods[p].passedCheckpoints;
                 } else {
+                    passedCount = playerStates[i].pods[p].passedCheckpoints;
                     playerStates[i].pods[p].turnsSinceCP++;
                 }
+                passed.push_back(passedCount);
+            }
+            // Update lead pod ID.
+            if(passed[0] == passed[1]) {
+                PodState& p0 = playerStates[i].pods[0];
+                PodState& p1 = playerStates[i].pods[1];
+                Checkpoint& cp = race.checkpoints[p0.nextCheckpoint];
+                playerStates[i].leadPodID = (cp.pos - p0.pos).getLength() < (cp.pos - p1.pos).getLength() ? 0 : 1;
+            } else {
+                playerStates[i].leadPodID = passed[0] > passed[1] ? 0 : 1;
             }
         }
     }
