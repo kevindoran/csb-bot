@@ -1,9 +1,5 @@
-//
-// Created by Kevin on 1/08/2016.
-//
-
-#ifndef CODERSSTRIKEBACKC_INPUTPARSER_H
-#define CODERSSTRIKEBACKC_INPUTPARSER_H
+#ifndef CODERSSTRIKEBACK_INPUTPARSER_H
+#define CODERSSTRIKEBACK_INPUTPARSER_H
 
 #include "State.h"
 
@@ -16,4 +12,4 @@ public:
     vector<PlayerState> parseTurn();
 };
 
-#endif //CODERSSTRIKEBACKC_INPUTPARSER_H
+#endif //CODERSSTRIKEBACK_INPUTPARSER_H

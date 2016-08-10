@@ -1,9 +1,5 @@
-//
-// Created by Kevin on 1/08/2016.
-//
-
-#ifndef CODERSSTRIKEBACKC_GAMESTATE_H
-#define CODERSSTRIKEBACKC_GAMESTATE_H
+#ifndef CODERSSTRIKEBACK_GAMESTATE_H
+#define CODERSSTRIKEBACK_GAMESTATE_H
 
 
 #define _USE_MATH_DEFINES
@@ -82,7 +78,6 @@ struct PodState {
 };
 
 struct PlayerState {
-//    static const int POD_COUNT = 2;
     vector<PodState> pods;
     vector<PodState> lastPods;
     int id; // Why is this needed?
@@ -121,7 +116,7 @@ struct GameState {
 };
 
 struct PodOutput {
-    double thrust; // double or int? Game treats it as int, but maybe double might be useful elsewhere.
+    double thrust;
     Vector target;
     static const int BOOST = -1;
     static const int SHIELD = -2;
@@ -168,6 +163,4 @@ public:
     GameState& game() {return current;}
 };
 
-
-
-#endif //CODERSSTRIKEBACKC_GAMESTATE_H
+#endif //CODERSSTRIKEBACK_GAMESTATE_H

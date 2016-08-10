@@ -1,6 +1,3 @@
-//
-// Created by Kevin on 1/08/2016.
-//
 #define _USE_MATH_DEFINES
 #include <cmath>
 

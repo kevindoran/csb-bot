@@ -1,28 +1,20 @@
-//
-// Created by Kevin on 1/08/2016.
-//
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <math.h>
 
+#include "State.h"
 #include "Physics.h"
 
 
-#include "State.h"
-
-
 double Physics::turnAngle(const PodState& pod, const Vector& target) {
-    // turn angle = min(turn_left_angle, turn_right_angle)
     double target_angle = Physics::angleTo(pod.pos, target);
-    // Need to have >= and <= instead of > and < as we want 0 degrees instead of 360 when there is no
-    // turning to do.
+    // Need to have >= and <= instead of > and < as we want 0 degrees instead of 360 when there is no turning to do.
     double turn_left = pod.angle >= target_angle ? pod.angle - target_angle : 2*M_PI - target_angle + pod.angle;
     double turn_right = pod.angle <= target_angle ? target_angle - pod.angle : 2*M_PI - pod.angle + target_angle;
     if(turn_right < turn_left) {
         return turn_right;
     } else {
-        // Left means negative angle.
+        // Turning left is achieved by outputting a negative angle.
         return -turn_left;
     }
 }
@@ -48,9 +40,6 @@ PodState Physics::move(const PodState& pod, const PodOutput& control, double tim
 }
 
 
-/**
- * Calculate intersetion of travel path and checkpoint radius (line-circle intersection).
- */
 bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint) {
     return passedPoint(beforePos, afterPos, checkpoint.pos, CHECKPOINT_RADIUS);
 }
@@ -95,15 +84,11 @@ bool Physics::isCollision(const PodState &podA, const PodOutput &controlA, const
         bool isCollision = (a.pos - b.pos).getLength() < 2 * POD_RADIUS;
         bool meetsVelThreshold = abs(velDiff.getLength()) >= abs(velThreshold);
         if(isCollision && meetsVelThreshold) {
-//            cerr << "Collision at: " << a.pos << " & " << b.pos << endl;
-//            cerr << "A control: " << controlA.thrust << ":" << controlA.target <<
-//                 "   B control: " << controlB.thrust << ":" << controlB.target;
             return true;
         }
     }
     return false;
 }
-
 
 PodOutput Physics::expectedControl(const PodState& previous, const PodState& current) {
     Vector force = (current.vel * (1/DRAG)) - previous.vel;
@@ -123,13 +108,6 @@ PodState Physics::extrapolate(const PodState& pod, const PodOutput& control, int
     return p;
 }
 
-/**
- * Calculates the angle of the vector from one point to another (measured from the positive x-axis clockwise). In other
- * words, calculate the angle the vector (toPoint - fromPoint) makes with the positive x-axis.
- * @param fromPoint
- * @param toPoint
- * @return
- */
 double Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
     Vector diff = toPoint - fromPoint;
     double angle = acos(diff.x / diff.getLength());
@@ -138,11 +116,7 @@ double Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
     }
     return angle;
 }
-/**
- * Calculate the angle between two vectors; the angle in the wedge created by two vectors.
- *
- * @return angle between 0 and 2*pi
- */
+
 double Physics::angleBetween(const Vector& from, const Vector& to) {
     double angle = acos(from.dotProduct(to) / (double) (from.getLength() * to.getLength()));
     if(to.y < from.y) {

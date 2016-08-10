@@ -4,7 +4,7 @@ set(HEADER_FILES
         InputParser.h
         Physics.h
         State.h
-        podracerBot.h
+        PodracerBot.h
         Vector.h
         Navigation.h)
 
@@ -12,7 +12,7 @@ set(HEADER_FILES
 set(SOURCE_FILES
         InputParser.cpp
         Physics.cpp
-        podracerBot.cpp
+        PodracerBot.cpp
         Vector.cpp
         Navigation.cpp
         State.cpp)

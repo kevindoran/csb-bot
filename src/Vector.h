@@ -1,10 +1,8 @@
-#ifndef CODERSSTRIKEBACKC_VECTOR_H
-#define CODERSSTRIKEBACKC_VECTOR_H
+#ifndef CODERSSTRIKEBACK_VECTOR_H
+#define CODERSSTRIKEBACK_VECTOR_H
 
 #include <cmath>
 #include <iostream>
-
-using namespace std;
 
 class Vector {
 public:
@@ -26,8 +24,34 @@ public:
     ~Vector() {};
 
     static Vector fromMagAngle(double magnitude, double angle) {
-        return Vector(magnitude * cos(angle), magnitude * sin(angle));
+        return Vector(magnitude * std::cos(angle), magnitude * std::sin(angle));
     }
+
+    double getX() const {
+        return x;
+    }
+
+    double getY() const {
+        return y;
+    }
+
+    double getLength() const {
+        if(length == UN_SET) {
+            length = std::sqrt(getLengthSq());
+        }
+        return length;
+    }
+
+    double getLengthSq() const {
+        if(lengthSq == UN_SET) {
+            lengthSq = x*x + y*y;
+        }
+        return lengthSq;
+    }
+
+    double dotProduct(const Vector& other) const {
+        return x * other.x + y * other.y;
+    };
 
     Vector project(const Vector& p) const {
         return (*this * (dotProduct(p) / getLengthSq()));
@@ -85,12 +109,6 @@ public:
         return *this;
     }
 
-    friend ostream &operator<<(ostream &os, const Vector &vector) {
-        os << "(" << vector.x << "," << vector.y << ")";
-        return
-        os;
-    }
-
     bool operator==(const Vector& other) const {
         return (x == other.x && y == other.y);
     }
@@ -99,31 +117,11 @@ public:
         return !(*this == other);
     }
 
-    double getX() const {
-        return x;
+    friend std::ostream &operator<<(std::ostream &os, const Vector &vector) {
+        os << "(" << vector.x << "," << vector.y << ")";
+        return
+                os;
     }
-
-    double getY() const {
-        return y;
-    }
-
-    double getLength() const {
-        if(length == UN_SET) {
-            length = sqrt(getLengthSq());
-        }
-        return length;
-    }
-
-    double getLengthSq() const {
-        if(lengthSq == UN_SET) {
-            lengthSq = x*x + y*y;
-        }
-        return lengthSq;
-    }
-
-    double dotProduct(const Vector& other) const {
-        return x * other.x + y * other.y;
-    };
 };
 
-#endif //CODERSSTRIKEBACKC_VECTOR_H
+#endif //CODERSSTRIKEBACK_VECTOR_H
