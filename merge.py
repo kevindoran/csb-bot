@@ -25,7 +25,17 @@ def dependencies(file):
     with open(file) as f:
         filetext = f.read()
         file_names = re.findall(local_include_regex, filetext)
+    cpp_file = matching_cpp_file(file)
+    if os.path.exists(cpp_file):
+        with open(cpp_file) as cf:
+            filetext = cf.read()
+            file_names_cpp = re.findall(local_include_regex, filetext)
+            file_names.extend(file_names_cpp)
     return file_names
+
+def matching_cpp_file(header_file):
+    cpp_file = header_file.split('.')[0] + '.' + cpp_extension
+    return cpp_file
 
 
 def merge(main_file):
@@ -38,7 +48,7 @@ def merge(main_file):
             filetext = re.sub(local_include_regex, '', filetext)
             out += filetext
 
-            cpp_file = header.split('.')[0] + '.' + cpp_extension
+            cpp_file = matching_cpp_file(header)
             if os.path.exists(cpp_file):
                 cpp_files.append(cpp_file)
 
