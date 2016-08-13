@@ -4,7 +4,7 @@
 #include "PodracerBot.h"
 
 // TODO: got integer overflow (-max int) output on one game. Not sure why.
-PodOutput MinimalBot::move(GameState& gameState, int podID) {
+PodOutput Racer::move(GameState& gameState, int podID) {
 // Where should these two go...
     Navigation nav(gameState.race);
     Physics physics(gameState.race);

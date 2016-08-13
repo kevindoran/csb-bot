@@ -18,7 +18,7 @@ public:
     virtual PodOutput move(GameState& gameState, int podID) {};
 };
 
-class MinimalBot : public PodraceBot {
+class Racer : public PodraceBot {
 public:
     PodOutput move(GameState& gameState, int podID);
 };
