@@ -49,9 +49,15 @@ public:
         return lengthSq;
     }
 
+    // Could replace with overloading Vector * Vector.
     double dotProduct(const Vector& other) const {
         return x * other.x + y * other.y;
     };
+
+    // Could replace with overloading Vector ^ Vector.
+    double crossProduct(const Vector& other) const {
+        return x * other.y - y * other.x;
+    }
 
     Vector project(const Vector& p) const {
         return (*this * (dotProduct(p) / getLengthSq()));
@@ -59,6 +65,10 @@ public:
 
     Vector normalize() const {
         return Vector(x / getLength(), y / getLength());
+    }
+
+    Vector tanget() const {
+        return Vector(-y, x);
     }
 
     Vector &operator+=(const Vector &other) {
