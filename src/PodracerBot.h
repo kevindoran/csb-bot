@@ -18,12 +18,12 @@ public:
     virtual PodOutput move(GameState& gameState, int podID) {};
 };
 
-class MinimalBot : PodraceBot {
+class MinimalBot : public PodraceBot {
 public:
     PodOutput move(GameState& gameState, int podID);
 };
 
-class Bouncer : PodraceBot {
+class Bouncer : public PodraceBot {
 public:
     PodOutput move(GameState& gameState, int podID);
 };
