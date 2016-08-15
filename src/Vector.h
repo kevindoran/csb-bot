@@ -27,6 +27,10 @@ public:
         return Vector(magnitude * std::cos(angle), magnitude * std::sin(angle));
     }
 
+    Vector rotated(double angle) {
+        return Vector(x*std::cos(angle) - y*std::sin(angle), x*std::sin(angle) + y*std::cos(angle));
+    }
+
     double getX() const {
         return x;
     }
@@ -59,6 +63,9 @@ public:
         return x * other.y - y * other.x;
     }
 
+    /**
+     * Project vector p onto this vector.
+     */
     Vector project(const Vector& p) const {
         return (*this * (dotProduct(p) / getLengthSq()));
     }
