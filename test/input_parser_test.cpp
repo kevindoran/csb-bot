@@ -51,7 +51,7 @@ TEST_F(InputParserTest, basic) {
         Vector p1pod2(4, 0);
         EXPECT_EQ(p1pod1, players[OUR_PLAYER_ID].pods[0].pos);
         EXPECT_EQ(p1pod2, players[OUR_PLAYER_ID].pods[1].pos);
-        double angle1 = M_PI / 2;
-        EXPECT_DOUBLE_EQ(angle1, players[OUR_PLAYER_ID].pods[0].angle);
+        float angle1 = M_PI / 2;
+        EXPECT_FLOAT_EQ(angle1, players[OUR_PLAYER_ID].pods[0].angle);
 }
 

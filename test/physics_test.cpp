@@ -50,7 +50,7 @@ public:
 };
 
 TEST_F(PhysicsTest, simpleMove) {
-        double acc = 100;
+        float acc = 100;
         PodState expected(3100, 0, 85, 0, 0, 0);
         PodOutput po(acc, podState->pos + Vector(1, 0)); // angle = 0.
         PodState afterMove = physics->move(*podState, po, 1);
@@ -76,24 +76,24 @@ TEST_F(PhysicsTest, angleTo) {
 TEST_F(PhysicsTest, expectedControl) {
     Vector pos1(200,200);
     Vector vel1(0,0);
-    double angle = 0;
+    float angle = 0;
     Vector pos2(285, 200);
     Vector vel2(85, 0);
 
     PodState ps1(pos1, vel1, angle);
     PodState ps2(pos2, vel2, angle);
     PodOutput expectedControl(100, Vector(300,200));
-    double expectedAngle = physics->angleTo(pos1, expectedControl.target);
+    float expectedAngle = physics->angleTo(pos1, expectedControl.target);
     PodOutput ans = physics->expectedControl(ps1, ps2);
-    double ansAngle = physics->angleTo(pos1, ans.target);
-    EXPECT_DOUBLE_EQ(expectedControl.thrust, ans.thrust);
-    EXPECT_DOUBLE_EQ(expectedAngle, ansAngle);
+    float ansAngle = physics->angleTo(pos1, ans.target);
+    EXPECT_FLOAT_EQ(expectedControl.thrust, ans.thrust);
+    EXPECT_FLOAT_EQ(expectedAngle, ansAngle);
 }
 
 TEST_F(PhysicsTest, turnAngle) {
     Vector pos(200, 200);
     Vector vel(100, 0);
-    double facingAngle = M_PI / 2;
+    float facingAngle = M_PI / 2;
     PodState ps(pos, vel, facingAngle, 0);
     Vector targetA(200, 0); // Directly above, 180deg.
     Vector targetA2(200, 400); // Directly below, 0deg.
@@ -102,13 +102,13 @@ TEST_F(PhysicsTest, turnAngle) {
     Vector targetD(150, 400); // Below to the west (turn right), ~0deg.
     Vector targetE(250, 400); // Below to the east (turn left) ~ 0deg.
 
-    double turnA = physics->turnAngle(ps, targetA);
-    double turnA2 = physics->turnAngle(ps, targetA2);
-    double turnB = physics->turnAngle(ps, targetB);
-    double turnC = physics->turnAngle(ps, targetC);
-    double turnD = physics->turnAngle(ps, targetD);
-    double turnE = physics->turnAngle(ps, targetE);
-    double abs_error = 0.000000001;
+    float turnA = physics->turnAngle(ps, targetA);
+    float turnA2 = physics->turnAngle(ps, targetA2);
+    float turnB = physics->turnAngle(ps, targetB);
+    float turnC = physics->turnAngle(ps, targetC);
+    float turnD = physics->turnAngle(ps, targetD);
+    float turnE = physics->turnAngle(ps, targetE);
+    float abs_error = 0.000001;
     EXPECT_NEAR(M_PI, abs(turnA), abs_error);
     EXPECT_NEAR(0, turnA2, abs_error);
     EXPECT_NEAR(-(M_PI - atan(50.0/200.0)), turnB, abs_error);
@@ -128,15 +128,15 @@ TEST_F(PhysicsTest, isCollision) {
     // Pod at (0,0) moving at ~250 east and pod at (1200, 0) moving at ~250 west.
     Vector posA(0,0);
     Vector velA(200,0);
-    double angleA = 0;
+    float angleA = 0;
     PodState psA(posA, velA, angleA, 0);
     PodOutput controlA(100, posA + Vector(1,0));
     Vector posB(1200, 0);
     Vector velB(-200, 0);
-    double angleB = M_PI;
+    float angleB = M_PI;
     PodState psB(posB, velB, angleB, 0);
     PodOutput controlB(100, posB + Vector(-1,0));
-    double velThreshold = 0; // Just testing any collision.
+    float velThreshold = 0; // Just testing any collision.
     bool isCollision = physics->isCollision(psA, controlA, psB, controlB, velThreshold);
     EXPECT_TRUE(isCollision);
 

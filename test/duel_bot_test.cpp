@@ -36,7 +36,8 @@ protected:
 
 TEST_F(DuelBotTest, annealing_bot_test) {
     AnnealingBot bot(r);
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 50; i++) {
+        cout << "#" << i << endl;
         PairOutput control = bot.move(playerStates[0].pods, playerStates[1].pods);
     }
 }

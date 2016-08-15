@@ -10,13 +10,13 @@
 PodOutput Navigation::seek(const PodState &pod, const Vector &target) {
     Vector desired_vel = (target - pod.pos) * 0.5;
     Vector vel_diff = desired_vel - pod.vel;
-    Vector thrust = vel_diff * (MAX_THRUST / max(1.0, vel_diff.getLength()));
+    Vector thrust = vel_diff * (MAX_THRUST / max(1.0f, vel_diff.getLength()));
     cerr << "1 " << (vel_diff + pod.pos) << endl;
     return PodOutput(thrust.getLength(), vel_diff + pod.pos);
 }
 
 // One side of the normal distribution's CDF.
-double normal_cdf_half(double x) {
+float normal_cdf_half(float x) {
     x = abs(x);
     return 1 - sqrt(1 - exp(-(2 / M_PI) * x * x));
 }
@@ -26,10 +26,10 @@ PodOutput Navigation::turnSaturationAdjust(const PodState &pod, const PodOutput 
     if (control.thrust == PodOutput::BOOST || control.thrust == PodOutput::SHIELD) {
         return control;
     }
-    double cut_off = M_PI / 2 + MAX_ANGLE;
-    double angle_threshold = M_PI * (20.0 / 180.0);
-    double turn_angle = abs(physics.turnAngle(pod, control.target));
-    double acc = control.thrust;
+    float cut_off = M_PI / 2 + MAX_ANGLE;
+    float angle_threshold = M_PI * (20.0 / 180.0);
+    float turn_angle = abs(physics.turnAngle(pod, control.target));
+    float acc = control.thrust;
     if (turn_angle > cut_off) {
         acc = 0;
     } else if (turn_angle > angle_threshold) {
@@ -38,7 +38,7 @@ PodOutput Navigation::turnSaturationAdjust(const PodState &pod, const PodOutput 
         // speed = speed - int(((angle - angle_threshold) / (max_angle - angle_threshold)) * max_minus)
         //
         // 2. Ramp down with the shape of the normal distribution:
-        double spread = 0.3;
+        float spread = 0.3;
         acc *= normal_cdf_half(spread * (turn_angle - angle_threshold) / (cut_off - angle_threshold));
         // Notes:
         // Minus angle_threshold to delay the speed dip, like a truncated normal distribution.
@@ -51,7 +51,7 @@ PodOutput Navigation::turnSaturationAdjust(const PodState &pod, const PodOutput 
     return adjusted;
 }
 
-PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, double radius, Vector nextTarget) {
+PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget) {
     // If we are on target within 5 turns, we will thrust towards the next CP. If we are not on target within 5 turns
     // but are on target within 6, turn towards the next CP without thrusting.
     int defaultTurn = 6;
@@ -59,7 +59,7 @@ PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, dou
     return preemptSeek(pod, initialTarget, radius, nextTarget, defaultTurn, defaultSwitch);
 }
 
-PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, double radius,
+PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius,
                                   Vector nextTarget, int turnThreshold, int switchThreshold) {
     int i = 0;
     for (; i <= turnThreshold; i++) {
@@ -99,7 +99,7 @@ PodOutput Navigation::intercept(const PodState &pod, const PodState &enemy) {
 }
 
 
-double Navigation::geometric_sum(double a, double r, int r1, int r2) {
+float Navigation::geometric_sum(float a, float r, int r1, int r2) {
     return (a * pow(r, r1) - a * pow(r, (r2 + 1))) / (1 - r);
 }
 
@@ -111,8 +111,8 @@ Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
     // The distance between two points on the path below which is acceptable to be considered the same 'area' or
     // place where the bots are likely to collide.
     int accept_range = intercept_path.getLength() > 3000 ? 900 : 600;
-    double low = 0;
-    double high = intercept_path.getLength();
+    float low = 0;
+    float high = intercept_path.getLength();
     Vector midPoint;
     // TODO: hardcoded heuristic- convert to parameter and search for optimum.
     // The difference in turns which is acceptable for the bots to arrive at the collision area.
@@ -121,7 +121,7 @@ Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
     int enemyTime = ourTime + close_enough + 1;
     int resolution = 5; // The search will end if the distance between the points is less than 5.
     while (abs(ourTime - enemyTime) > 0 && low < high) {
-        double mid = low + (high - low) / 2;
+        float mid = low + (high - low) / 2;
         midPoint = enemy.pos + intercept_path * (mid / intercept_path.getLength());
         ourTime = turnsUntilReached(pod, midPoint, accept_range);
         enemyTime = turnsUntilReached(enemy, midPoint, accept_range);
@@ -143,7 +143,7 @@ Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
     }
 }
 
-int Navigation::turnsUntilReached(const PodState &podInit, Vector target, double withinDist) {
+int Navigation::turnsUntilReached(const PodState &podInit, Vector target, float withinDist) {
     int maxTurns = 30;
     PodState pod = podInit;
     PodState previous = podInit;

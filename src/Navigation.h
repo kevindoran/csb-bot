@@ -9,7 +9,7 @@ class Navigation {
     Physics physics;
 
     // Si = ar^0 + ar^1 + ar^2...ar^i
-    double geometric_sum(double a, double r, int r1, int r2);
+    float geometric_sum(float a, float r, int r1, int r2);
 public:
 
     Vector find_intercept(const PodState &pod, const PodState &enemy);
@@ -24,12 +24,12 @@ public:
 
     PodOutput intercept(const PodState &pod, const PodState &enemy);
 
-    PodOutput preemptSeek(const PodState &pod, Vector intialTarget, double radius, Vector nextTarget);
+    PodOutput preemptSeek(const PodState &pod, Vector intialTarget, float radius, Vector nextTarget);
 
-    PodOutput preemptSeek(const PodState &pod, Vector initialTarget, double radius, Vector nextTarget,
+    PodOutput preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget,
                           int turnThreshold, int switchThreshold);
 
-    int turnsUntilReached(const PodState &podInit, Vector target, double withinDist);
+    int turnsUntilReached(const PodState &podInit, Vector target, float withinDist);
 };
 
 #endif //CODERSSTRIKEBACK_NAVIGATION_H

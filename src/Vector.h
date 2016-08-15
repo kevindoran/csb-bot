@@ -7,46 +7,46 @@
 class Vector {
 public:
     static const int UN_SET = -1;
-    mutable double length = UN_SET;
-    mutable double lengthSq = UN_SET;
-    double x;
-    double y;
+    mutable float length = UN_SET;
+    mutable float lengthSq = UN_SET;
+    float x;
+    float y;
 
     Vector() {}
 
-    Vector(double x, double y) : x(x), y(y) {}
+    Vector(float x, float y) : x(x), y(y) {}
 
-    Vector(double x, double y, double length, double lengthSq) : x(x), y(y), length(length), lengthSq(lengthSq) {}
+    Vector(float x, float y, float length, float lengthSq) : x(x), y(y), length(length), lengthSq(lengthSq) {}
 
     // Use default.
     //Vector(const Vector& vector);
 
     ~Vector() {};
 
-    static Vector fromMagAngle(double magnitude, double angle) {
+    static Vector fromMagAngle(float magnitude, float angle) {
         return Vector(magnitude * std::cos(angle), magnitude * std::sin(angle));
     }
 
-    Vector rotated(double angle) {
+    Vector rotated(float angle) {
         return Vector(x*std::cos(angle) - y*std::sin(angle), x*std::sin(angle) + y*std::cos(angle));
     }
 
-    double getX() const {
+    float getX() const {
         return x;
     }
 
-    double getY() const {
+    float getY() const {
         return y;
     }
 
-    double getLength() const {
+    float getLength() const {
         if(length == UN_SET) {
             length = std::sqrt(getLengthSq());
         }
         return length;
     }
 
-    double getLengthSq() const {
+    float getLengthSq() const {
         if(lengthSq == UN_SET) {
             lengthSq = x*x + y*y;
         }
@@ -54,12 +54,12 @@ public:
     }
 
     // Could replace with overloading Vector * Vector.
-    double dotProduct(const Vector& other) const {
+    float dotProduct(const Vector& other) const {
         return x * other.x + y * other.y;
     };
 
     // Could replace with overloading Vector ^ Vector.
-    double crossProduct(const Vector& other) const {
+    float crossProduct(const Vector& other) const {
         return x * other.y - y * other.x;
     }
 
@@ -106,7 +106,7 @@ public:
         return Vector(-x, -y);
     }
 
-    Vector operator*=(double scalar) {
+    Vector operator*=(float scalar) {
         x *= scalar;
         y *= scalar;
         length = UN_SET;
@@ -114,11 +114,11 @@ public:
         return *this;
     }
 
-    Vector operator*(double scalar) const {
+    Vector operator*(float scalar) const {
         return Vector(*this) *= scalar;
     }
 
-    Vector &operator/=(double scalar) {
+    Vector &operator/=(float scalar) {
         x /= scalar;
         y /= scalar;
         length = UN_SET;

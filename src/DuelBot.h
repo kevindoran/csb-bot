@@ -10,12 +10,12 @@
 
 struct PodOutputSim {
     int thrust;
-    double angle;
+    float angle;
     bool shieldEnabled;
 
     PodOutputSim() {}
 
-    PodOutputSim(int thrust, double angle, bool shieldEnabled) : thrust(thrust), angle(angle),
+    PodOutputSim(int thrust, float angle, bool shieldEnabled) : thrust(thrust), angle(angle),
                                                                  shieldEnabled(shieldEnabled) {}
 
     PodOutput absolute(const PodState& pod) {
@@ -35,7 +35,7 @@ public:
 
     static PairOutput random() {
         int randomSpeed = rand() % (MAX_THRUST + 1);
-        double randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
+        float randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
         bool shieldEnabled = false;
         PodOutputSim o1(randomSpeed, randomAngle, shieldEnabled);
 
@@ -105,8 +105,8 @@ public:
 class AnnealingBot : public DuelBot {
     Race &race;
     static const int turns = 5;
-    static constexpr double maxScore = numeric_limits<double>::infinity();
-    static constexpr double minScore = -numeric_limits<double>::infinity();
+    static constexpr float maxScore = numeric_limits<float>::infinity();
+    static constexpr float minScore = -numeric_limits<float>::infinity();
     Physics physics;
 
     vector<PairOutput> randomSolution();
@@ -115,9 +115,9 @@ class AnnealingBot : public DuelBot {
 
     void simulate(vector<PodState> &pods1, SimBot *pods1Sim, vector<PodState> &pods2, SimBot *pods2Sim, int turns);
 
-    double score(vector<PodState> pods, vector<PodState> enemyPods);
+    float score(vector<PodState> pods, vector<PodState> enemyPods);
 
-    double score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods, MinimalBot race);
+    float score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods, MinimalBot race);
 
 public:
     AnnealingBot(Race &race) : race(race), physics(race) {}

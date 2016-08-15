@@ -14,8 +14,8 @@ using namespace std;
 
 static const int MAX_THRUST = 200;
 static const int MAX_ANGLE_DEG = 15;
-static constexpr double MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
-static constexpr double DRAG = 0.85;
+static constexpr float MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
+static constexpr float DRAG = 0.85f;
 static const int POD_COUNT = 2;
 static const int PLAYER_COUNT = 2;
 static const int CHECKPOINT_RADIUS = 600;
@@ -38,7 +38,7 @@ struct Checkpoint {
 struct Race {
     int laps;
     vector<Checkpoint> checkpoints;
-    double maxCheckpointDist = 0;
+    float maxCheckpointDist = 0;
 
     Race() {}
 
@@ -62,7 +62,7 @@ struct PodState {
     Vector pos;
     Vector vel;
     // In radians
-    double angle;
+    float angle;
     bool shieldEnabled = false;
     int nextCheckpoint;
     int passedCheckpoints = 0;
@@ -72,14 +72,14 @@ struct PodState {
 
     PodState() {}
 
-    PodState(int x, int y, int vx, int vy, double angle, int nextCheckpoint) :
+    PodState(int x, int y, int vx, int vy, float angle, int nextCheckpoint) :
             pos(x, y), vel(vx, vy), angle(angle), nextCheckpoint(nextCheckpoint) { }
 
-    PodState(Vector pos, Vector vel, double angle, int nextCheckpoint) :
+    PodState(Vector pos, Vector vel, float angle, int nextCheckpoint) :
             pos(pos), vel(vel), angle(angle), nextCheckpoint(nextCheckpoint) {}
 
     // Many tests and simulations don't care about the checkpoints.
-    PodState(Vector pos, Vector vel, double angle) : pos(pos), vel(vel), angle(angle) {}
+    PodState(Vector pos, Vector vel, float angle) : pos(pos), vel(vel), angle(angle) {}
 
     bool operator ==(const PodState& other) const {
         return (pos == other.pos && vel == other.vel && angle == other.angle && nextCheckpoint == other.nextCheckpoint);
@@ -132,14 +132,14 @@ struct GameState {
 
 // TODO: refactor usage to match the updated PodOutput version.
 struct PodOutput {
-    double thrust;
+    float thrust;
     Vector target;
     static const int BOOST = -1;
     static const int SHIELD = -2;
 
     PodOutput() {}
 
-    PodOutput(double thrust, Vector direction) :
+    PodOutput(float thrust, Vector direction) :
             thrust(thrust), target(direction) {}
 
     string toString() {

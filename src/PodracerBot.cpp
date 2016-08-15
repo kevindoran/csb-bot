@@ -18,7 +18,7 @@ PodOutput Racer::move(GameState& gameState, int podID) {
     } else {
         move = nav.preemptSeek(pod);
     }
-    double velThreshold = 190;
+    float velThreshold = 190;
     if(gameState.turn > 0) {
         for (int i = 0; i < gameState.enemyState().pods.size(); i++) {
             const PodState& enemyPod = gameState.enemyState().pods[i];
@@ -33,7 +33,7 @@ PodOutput Racer::move(GameState& gameState, int podID) {
         if(move.thrust != PodOutput::SHIELD) {
             // Maybe best to save last player history so it is easy to get at the lead/lagging pod easily.
             // Also, better performance if I actually use the real bouncer pod output.
-            double friendlyThreshold = velThreshold/3; // We know our bouncer wont use a shield.
+            float friendlyThreshold = velThreshold/3; // We know our bouncer wont use a shield.
             const PodState& bouncerPod = gameState.ourState().laggingPod();
             const PodState& previousBouncerPod = gameState.ourState().lastPods[(gameState.ourState().leadPodID + 1) % PLAYER_COUNT];
             if(pod.turnsSinceShield >= SHIELD_COOLDOWN && physics.isCollision(pod, move, bouncerPod,
@@ -43,9 +43,9 @@ PodOutput Racer::move(GameState& gameState, int podID) {
         }
     }
     if(pod.boostAvailable && move.thrust != PodOutput::SHIELD) {
-        double boostAngleLimit = M_PI * (4.0 / 180.0);
-        double minimumDistFactor = 0.8;
-        double distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
+        float boostAngleLimit = M_PI * (4.0 / 180.0);
+        float minimumDistFactor = 0.8;
+        float distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
         if(abs(physics.angleTo(pod.pos, ck.pos) - pod.angle) < boostAngleLimit &&
            (ck.pos - pod.pos).getLength() >= distThreshold) {
             move.thrust = PodOutput::BOOST;
@@ -83,10 +83,10 @@ PodOutput Bouncer::move(GameState& gameState, int podID) {
     } else {
         move = nav.turnSaturationAdjust(pod, nav.seek(pod, gameState.race.checkpoints[pod.nextCheckpoint].pos));
         if(pod.boostAvailable && move.thrust != PodOutput::SHIELD) {
-            double boostAngleLimit = M_PI * (5.0 / 180.0);
-            double minimumDistFactor = 0.7;
+            float boostAngleLimit = M_PI * (5.0 / 180.0);
+            float minimumDistFactor = 0.7;
             Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
-            double distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
+            float distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
             if(abs(physics.angleTo(pod.pos, ck.pos) - pod.angle) < boostAngleLimit &&
                (ck.pos - pod.pos).getLength() >= distThreshold) {
                 move.thrust = PodOutput::BOOST;
@@ -95,7 +95,7 @@ PodOutput Bouncer::move(GameState& gameState, int podID) {
         }
     }
     if(gameState.turn > 0) {
-        double velThreshold = 150;
+        float velThreshold = 150;
         for (int i = 0; i < gameState.enemyState().pods.size(); i++) {
             const PodState& enemyPod = gameState.enemyState().pods[i];
             const PodState& previousEnemyPod = gameState.enemyState().lastPods[i];
@@ -104,7 +104,7 @@ PodOutput Bouncer::move(GameState& gameState, int podID) {
                 break;
             }
         }
-        double friendlyVelThreshold = 60;
+        float friendlyVelThreshold = 60;
         int turnsAhead = 2;
         const PodState& lead = gameState.ourState().leadPod();
         const PodState& previousLead = gameState.ourState().lastPods[gameState.ourState().leadPodID];

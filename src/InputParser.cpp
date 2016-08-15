@@ -27,7 +27,7 @@ vector<PlayerState> InputParser::parseTurn() {
         for (int p = 0; p < POD_COUNT; p++) {
             int x, y, vx, vy, angle, nextCheckpoint;
             stream >> x >> y >> vx >> vy >> angle >> nextCheckpoint;
-            double angleRad = M_PI * (angle / 180.0);
+            float angleRad = M_PI * (angle / 180.0);
             PodState pod(x, y, vx, vy, angleRad, nextCheckpoint);
             podStates.push_back(pod);
         }

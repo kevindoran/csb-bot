@@ -56,10 +56,10 @@ TEST(NavigationTest, turnsUntilReached) {
     Navigation nav(Race(1, {Checkpoint(0,0,0)}));
     Vector pos(200, 0);
     Vector vel(100, 0);
-    double angle = 0;
+    float angle = 0;
     Vector target(1000, 0);
     PodState ps(pos, vel, angle, 0);
-    double withinDist = 100;
+    float withinDist = 100;
     int turns = nav.turnsUntilReached(ps, target, withinDist);
     int precalculatedAns = 4;
     EXPECT_EQ(precalculatedAns, turns);
@@ -69,7 +69,7 @@ TEST(NavigationTest, findIntecept) {
     Navigation nav(Race(1, {Checkpoint(0,0,0)}));
     Vector pos(9335, 977);
     Vector vel(0, 0);
-    double angle = M_PI * (145 / 180);
+    float angle = M_PI * (145 / 180);
     PodState ps(pos, vel, angle, 0);
 
     // enemy
