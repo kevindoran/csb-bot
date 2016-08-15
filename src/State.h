@@ -12,7 +12,7 @@
 using namespace std;
 
 
-static const int MAX_THRUST = 100;
+static const int MAX_THRUST = 200;
 static const int MAX_ANGLE_DEG = 15;
 static constexpr double MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
 static constexpr double DRAG = 0.85;
@@ -20,10 +20,12 @@ static const int POD_COUNT = 2;
 static const int PLAYER_COUNT = 2;
 static const int CHECKPOINT_RADIUS = 600;
 static const int POD_RADIUS = 400;
+static const int POD_RADIUS_SQ = 400 * 400;
 static const int WANDER_TIMEOUT = 100;
 static const int SHIELD_COOLDOWN = 3;
 static const int OUR_PLAYER_ID = 0;
-static const int BOOST_VELOCITY = 800;
+static const int BOOST_VELOCITY = 650;
+
 
 struct Checkpoint {
     Vector pos;
