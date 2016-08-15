@@ -48,6 +48,14 @@ struct Race {
             maxCheckpointDist = max(maxCheckpointDist, (checkpoints[i].pos - checkpoints[i+1].pos).getLength());
         }
     }
+
+    int totalCPCount() {
+        return laps * checkpoints.size();
+    }
+
+    int followingCheckpoint(int cp) {
+        return (cp + 1) % checkpoints.size();
+    }
 };
 
 struct PodState {
@@ -55,11 +63,14 @@ struct PodState {
     Vector vel;
     // In radians
     double angle;
+    bool shieldEnabled = false;
     int nextCheckpoint;
     int passedCheckpoints = 0;
     int turnsSinceCP = 0;
     int turnsSinceShield = 0;
     bool boostAvailable = true;
+
+    PodState() {}
 
     PodState(int x, int y, int vx, int vy, double angle, int nextCheckpoint) :
             pos(x, y), vel(vx, vy), angle(angle), nextCheckpoint(nextCheckpoint) { }
@@ -117,6 +128,9 @@ struct GameState {
     }
 };
 
+
+
+// TODO: refactor usage to match the updated PodOutput version.
 struct PodOutput {
     double thrust;
     Vector target;
@@ -149,6 +163,8 @@ struct PodOutput {
     void enableBoost() {
         thrust = BOOST;
     }
+
+    Vector force();
 };
 
 class State {

@@ -1,10 +1,125 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <algorithm>
+#include <math.h>
 
 #include "State.h"
 #include "Physics.h"
 
+
+PassedCheckpoint PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race) {
+    double time = Physics::passedCircleAt(a.pos, a.pos + a.vel, race.checkpoints[a.nextCheckpoint].pos, CHECKPOINT_RADIUS);
+    if(time == -1) return invalid(a);
+    else return PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
+}
+
+void PassedCheckpoint::resolve() {
+    if(occurred()) {
+        mPod.nextCheckpoint = mNextCheckpoint;
+    }
+}
+
+void Physics::simulate(vector<PodState*> pods) {
+    double time = 0;
+    vector<PassedCheckpoint> pCPEvents;
+    Collision earliest;
+    bool started = false;
+    bool hasCollision = false;
+    while(time < 1) {
+        for (int i = 0; i < pods.size() - 1; i++) {
+            // Collision or checkpoint passing first?
+            for (int j = i + 1; j < pods.size(); j++) {
+                Collision collision = Collision::testForCollision(*pods[i], *pods[j]);
+                if (collision.occurred() && (!hasCollision || earliest.time() > collision.time())) {
+                    hasCollision = true;
+                    earliest = collision;
+                }
+            }
+            // Can optimize by keeping list of pc events and resolving all those before the earliest collision.
+            PassedCheckpoint cpEvent = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race);
+            if (cpEvent.occurred()) {
+                pCPEvents.push_back(cpEvent);
+            }
+        }
+        for (auto& pcp : pCPEvents) {
+            if (!hasCollision || pcp.time() < earliest.time()) {
+                pcp.resolve();
+            }
+        }
+        double moveTime = hasCollision ? earliest.time() : 1;
+
+        for(auto& pod : pods) {
+            pod->pos += pod->vel * (moveTime - time);
+        }
+        if (hasCollision) {
+            earliest.resolve();
+            hasCollision = false;
+        }
+        time = moveTime;
+    }
+
+    // Drag and rounding.
+    for(auto& pod : pods) {
+        pod->vel = pod->vel * DRAG;
+        pod->vel.x = (int) pod->vel.x;
+        pod->vel.y = (int) pod->vel.y;
+        pod->pos.x = (int) pod->pos.x;
+        pod->pos.y = (int) pod->pos.y;
+    }
+}
+
+Collision Collision::testForCollision(PodState& a, PodState& b) {
+    // Change reference frame to a. a pos = (0, 0)
+//    Vector pathStart = b.pos - a.pos;
+//    Vector vel = b.vel - a.vel;
+//    Vector pathEnd = pathStart + vel;
+    double pathStartX = b.pos.x - a.pos.x;
+    double pathStartY = b.pos.y - a.pos.y;
+    double velX = b.vel.x - a.vel.x;
+    double velY = b.vel.y - a.vel.y;
+    double pathEndX = pathStartX + velX;
+    double pathEndY = pathStartY + velY;
+
+    Vector closestPoint = Physics::closestPointOnLine(pathStartX, pathStartY, pathEndX, pathEndY, Vector(0,0));
+    if(closestPoint.getLengthSq() > (2*POD_RADIUS)*(2*POD_RADIUS)) {
+        return invalidCollision();
+    } else {
+        double backDist = sqrt((POD_RADIUS*2)*(POD_RADIUS*2) - closestPoint.getLengthSq());
+        double velLength = sqrt(velX * velX + velY * velY);
+        double bCenterX = closestPoint.x - backDist * (velX / velLength);
+        double bCenterY = closestPoint.y - backDist * (velY / velLength);
+        double travelX = b.pos.x - bCenterX;
+        double travelY = b.pos.y - bCenterY;
+        double travelDist = sqrt(travelX*travelX + travelY * travelY);
+        double time = travelDist / velLength;
+//        Vector collisionPoint = a.vel * time + bCenter * 0.5;
+        // Reset to normal reference frame.
+        // Turns out that the actual collision point is not important, as the bots move to it before resolving the
+        // collision.
+//        collisionPoint = collisionPoint + a.pos;
+        return Collision(a, b, time);
+    }
+}
+
+void Collision::resolve() {
+    double m1 = a->shieldEnabled ? 10 : 1;
+    double m2 = b->shieldEnabled ? 10 : 1;
+    double mCoeff = (m1 * m2) / (m1 + m2);
+//    Vector normal = (collisionPoint - a->pos).normalize();
+    Vector normal = (b->pos - a->pos).normalize();
+    Vector relativeVel = a->vel - b->vel;
+    Vector impactNormal = normal.project(relativeVel) * mCoeff;
+    a->vel -= impactNormal * (1/m1);
+    b->vel += impactNormal * (1/m2);
+    // There is a half impulse minimum of 120.
+    double impulse = impactNormal.getLength();
+    if(impulse < 120.0) {
+        impulse *= 120.0 / impulse;
+    }
+    a->vel -= impactNormal * (1/m1);
+    b->vel += impactNormal * (1/m2);
+}
 
 double Physics::turnAngle(const PodState& pod, const Vector& target) {
     double target_angle = Physics::angleTo(pod.pos, target);
@@ -19,13 +134,24 @@ double Physics::turnAngle(const PodState& pod, const Vector& target) {
     }
 }
 
+Vector Physics::forceFromTarget(const PodState& pod, Vector target, double thrust) {
+    // TODO: check- should this be angleTo or turnAngle?
+    double angle = Physics::angleTo(pod.pos, target) - pod.angle;
+    if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
+    else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
+    double newAngle = pod.angle + angle;
+    Vector force = Vector::fromMagAngle(thrust, newAngle);
+    return force;
+}
+
 PodState Physics::move(const PodState& pod, const PodOutput& control, double time) {
+    // TODO: check- should this be angleTo or turnAngle?
     double angle = Physics::angleTo(pod.pos, control.target) - pod.angle;
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
     else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
     double newAngle = pod.angle + angle;
     Vector force = Vector::fromMagAngle(control.thrust, newAngle);
-    Vector newSpeed = (pod.vel + force) * DRAG;
+    Vector newSpeed = (pod.vel + force); //* DRAG; Drag should be applied after moving.
     Vector pos = pod.pos + newSpeed * time;
     // Passed checkpoint test.
     int nextCheckpoint = pod.nextCheckpoint;
@@ -35,6 +161,10 @@ PodState Physics::move(const PodState& pod, const PodOutput& control, double tim
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
     // Need rounding somewhere, or maybe just truncating.
+    pos.x = (int) pos.x;
+    pos.y = (int) pos.y;
+    newSpeed.x = (int) (newSpeed.x * DRAG);
+    newSpeed.y = (int) (newSpeed.y * DRAG);
     PodState nextState = PodState(pos, newSpeed, newAngle, nextCheckpoint);
     return nextState;
 }
@@ -44,6 +174,11 @@ bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, 
     return passedPoint(beforePos, afterPos, checkpoint.pos, CHECKPOINT_RADIUS);
 }
 bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const Vector& target, double radius) {
+    double time = passedCircleAt(beforePos, afterPos, target, radius);
+    return time != -1;
+}
+
+double Physics::passedCircleAt(const Vector &beforePos, const Vector &afterPos, const Vector &target, double radius) {
     Vector D = afterPos -beforePos;
     Vector F = beforePos - target;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
@@ -52,12 +187,48 @@ bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const
     long c = F.dotProduct(F) - radius * radius;
     long discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
-        return false;
+        return -1;
     } else {
         double disc = sqrt(discrimiminant);
         double t1 = (-b - disc)/(2*a);
         double t2 = (-b + disc)/(2*a);
-        return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+        return (t1 >= 0 && t1 <= 1) ? t1 : -1; // Ignoring t2, which represents passing the circle from the inside || (t2 >= 0 && t2 <= 1);
+    }
+}
+
+Vector Physics::closestPointOnLine(Vector lineStart, Vector lineEnd, Vector point) {
+    return closestPointOnLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, point);
+}
+Vector Physics::closestPointOnLine(double lineStartX, double lineStartY, double lineEndX, double lineEndY, Vector point) {
+    // Test if the closest point is one of the line segment end points.
+    double pathX = lineEndX - lineStartX;
+    double pathY = lineEndY - lineStartY;
+//    if(path.dotProduct(point - lineEnd) > 0) {
+    if((pathX * (point.x - lineEndX) + pathY * (point.y - lineEndY)) > 0) {
+        // Closest point is on the further side of lineEnd.
+        return Vector(lineEndX, lineEndY);
+//    } else if((-path).dotProduct(point - lineStart) > 0) {
+    } else if((pathX * (lineStartX - point.x) + pathY * (lineStartY - point.y)) > 0) {
+        // Closest point is on the further side of lineStart.
+        return Vector(lineStartX, lineStartY);
+    }
+    // Closest point is on line segment.
+    // Line equation: Ax + By = C1
+    // Pependicular line though point equation: -Bx + Ay = C2
+    double A = lineEndY - lineStartY;
+    double B = lineStartX - lineEndX;
+    double C1 = A * lineStartX + B * lineStartY;
+    double C2 = -B * point.x + A * point.y;
+    // Solve simultaneous equations for intersection.
+    double det  = A*A - -B*B;
+    if(det == 0) {
+        // Point is on the line, and thus, is the closest point.
+        return point;
+    } else {
+        // By Cramer's Rule:
+        double px = (A*C1 - B * C2) / det;
+        double py = (A*C2 - -B*C1) / det;
+        return Vector(px, py);
     }
 }
 
@@ -108,6 +279,20 @@ PodState Physics::extrapolate(const PodState& pod, const PodOutput& control, int
     return p;
 }
 
+void Physics::orderByProgress(vector<PodState>& pods) {
+    if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
+        // Already in order.
+        return;
+    } else if(pods[1].passedCheckpoints > pods[0].passedCheckpoints
+              || (race.checkpoints[pods[0].nextCheckpoint].pos - pods[0].pos).getLengthSq()
+                 > (race.checkpoints[pods[1].nextCheckpoint].pos - pods[1].pos).getLengthSq()) {
+        // Swap.
+        PodState& temp = pods[0];
+        pods[0] = pods[1];
+        pods[1] = temp;
+    }
+}
+
 double Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
     Vector diff = toPoint - fromPoint;
     double angle = acos(diff.x / diff.getLength());
@@ -126,5 +311,9 @@ double Physics::angleBetween(const Vector& from, const Vector& to) {
 }
 
 double Physics::radToDegrees(double radians) {
-    return 360 * radians / 2 * M_PI;
+    return 180 * radians / M_PI;
+}
+
+double Physics::degreesToRad(double degrees) {
+    return M_PI * (degrees / 180);
 }

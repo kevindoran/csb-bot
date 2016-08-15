@@ -51,7 +51,7 @@ public:
 
 TEST_F(PhysicsTest, simpleMove) {
         double acc = 100;
-        PodState expected(3085, 0, 85, 0, 0, 0);
+        PodState expected(3100, 0, 85, 0, 0, 0);
         PodOutput po(acc, podState->pos + Vector(1, 0)); // angle = 0.
         PodState afterMove = physics->move(*podState, po, 1);
         EXPECT_EQ(expected.pos, afterMove.pos);
@@ -145,4 +145,52 @@ TEST_F(PhysicsTest, isCollision) {
     psB = PodState(posB, velB, angleB, 0);
     isCollision = physics->isCollision(psA, controlA, psB, controlB, velThreshold);
     EXPECT_FALSE(isCollision);
+}
+
+TEST_F(PhysicsTest, simulate_single) {
+    // Single pod.
+    podState->vel = Vector(100, 0);
+    vector<PodState*> pods;
+    pods.push_back(podState);
+    physics->simulate(pods);
+    EXPECT_EQ(Vector(85,0), podState->vel);
+    EXPECT_EQ(Vector(3100, 0), podState->pos);
+}
+
+
+TEST(PhysicsTest2, closest_point_on_line) {
+    // Point above center of line.
+    Vector line1(0,0);
+    Vector line2(10,0);
+    Vector p(5, 5);
+    Vector closest = Physics::closestPointOnLine(line1, line2, p);
+    EXPECT_EQ(Vector(5, 0), closest);
+
+    // Point on line, in center.
+    Vector p2(5, 0);
+    closest = Physics::closestPointOnLine(line1, line2, p2);
+    EXPECT_EQ(p2, closest);
+
+    // Point to the left of the line, above.
+    Vector p3(-5, 5);
+    closest = Physics::closestPointOnLine(line1, line2, p3);
+    EXPECT_EQ(line1, closest);
+
+    // Point is leftmost point on line.
+    Vector p4(0, 0);
+    closest = Physics::closestPointOnLine(line1, line2, p4);
+    EXPECT_EQ(line1, p4);
+}
+
+TEST_F(PhysicsTest, simulate_collision) {
+    PodState a(Vector(0,0), Vector(200,0), 0);
+    PodState b(Vector(1200, 0), Vector(-200, 0), 0);
+    vector<PodState*> pods;
+    pods.push_back(&a);
+    pods.push_back(&b);
+    physics->simulate(pods);
+    EXPECT_EQ(Vector(200,0), a.pos);
+    EXPECT_EQ(Vector(1000,0), b.pos);
+    EXPECT_EQ(Vector(-170, 0), a.vel);
+    EXPECT_EQ(Vector(170, 0), b.vel);
 }
