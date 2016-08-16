@@ -7,7 +7,8 @@ set(HEADER_FILES
         PodracerBot.h
         Vector.h
         Navigation.h
-        DuelBot.h)
+        AnnealingBot.h
+        Simulation.h)
 
 
 set(SOURCE_FILES
@@ -17,7 +18,8 @@ set(SOURCE_FILES
         Vector.cpp
         Navigation.cpp
         State.cpp
-        DuelBot.cpp)
+        AnnealingBot.cpp
+        Simulation.cpp)
 
 add_library(PodracerBot STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
