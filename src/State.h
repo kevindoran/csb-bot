@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+
 #include "Vector.h"
 
 using namespace std;
@@ -24,7 +25,7 @@ static const int POD_RADIUS_SQ = 400 * 400;
 static const int WANDER_TIMEOUT = 100;
 static const int SHIELD_COOLDOWN = 3;
 static const int OUR_PLAYER_ID = 0;
-static const int BOOST_VELOCITY = 650;
+static const int BOOST_ACC = 650;
 
 
 struct Checkpoint {
@@ -64,7 +65,7 @@ struct PodState {
     // In radians
     float angle;
     bool shieldEnabled = false;
-    int nextCheckpoint;
+    int nextCheckpoint = 0;
     int passedCheckpoints = 0;
     int turnsSinceCP = 0;
     int turnsSinceShield = 0;
@@ -128,17 +129,15 @@ struct GameState {
 };
 
 
-
-// TODO: refactor usage to match the updated PodOutput version.
-struct PodOutput {
+struct PodOutputAbs {
     float thrust;
     Vector target;
     static const int BOOST = -1;
     static const int SHIELD = -2;
 
-    PodOutput() {}
+    PodOutputAbs() {}
 
-    PodOutput(float thrust, Vector direction) :
+    PodOutputAbs(float thrust, Vector direction) :
             thrust(thrust), target(direction) {}
 
     string toString() {
@@ -162,21 +161,46 @@ struct PodOutput {
     void enableBoost() {
         thrust = BOOST;
     }
+};
 
-    Vector force();
+
+class PodOutputSim {
+public:
+    int thrust;
+    float angle;
+    bool shieldEnabled;
+    bool boostEnabled;
+
+    PodOutputSim() {}
+
+    PodOutputSim(int thrust, float angle, bool shieldEnabled, bool boostEnabled) :
+            thrust(thrust), angle(angle), shieldEnabled(shieldEnabled), boostEnabled(boostEnabled) {}
+
+    static PodOutputSim fromAbsolute(const PodState &pod, const PodOutputAbs &abs);
+
+    PodOutputAbs absolute(const PodState &pod);
+};
+
+struct PairOutput {
+    PodOutputSim o1;
+    PodOutputSim o2;
+
+    PairOutput() {}
+    PairOutput(PodOutputSim o1, PodOutputSim o2) : o1(o1), o2(o2) {}
 };
 
 class State {
-    void update(const PodOutput& pod1, int id);
+    void update(const PodOutputAbs& pod1, int id);
     GameState previous;
     GameState current;
 public:
     Race race;
     int turn = 0;
 
-    State(Race race) : race(race) {};
+    State() {}
+    State(Race race) : race(race) {}
     void preTurnUpdate(vector<PlayerState> input);
-    void postTurnUpdate(PodOutput pod1, PodOutput pod2);
+    void postTurnUpdate(PodOutputAbs pod1, PodOutputAbs pod2);
     GameState& game() {return current;}
 };
 

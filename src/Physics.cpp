@@ -3,24 +3,79 @@
 #include <cmath>
 #include <algorithm>
 #include <math.h>
+#include <mshtmlc.h>
 
 #include "State.h"
 #include "Physics.h"
 
 
+void Physics::apply(PodState& pod, PodOutputSim control) {
+    if(abs(control.angle) > MAX_ANGLE) {
+        control.angle = control.angle < -MAX_ANGLE ? -MAX_ANGLE : MAX_ANGLE;
+    }
+    pod.angle += control.angle;
+    if(control.shieldEnabled) {
+        pod.shieldEnabled = true;
+        pod.turnsSinceShield = 0;
+    } else {
+        if(pod.turnsSinceShield <= SHIELD_COOLDOWN) {
+            control.thrust = 0;
+        } else if(pod.boostAvailable && control.boostEnabled) {
+            control.thrust = BOOST_ACC;
+            pod.boostAvailable = false;
+        }
+        else if(control.thrust > MAX_THRUST) {
+            control.thrust = MAX_THRUST;
+        } else if(control.thrust < 0) {
+            control.thrust = 0;
+        }
+        Vector force = Vector::fromMagAngle(control.thrust, pod.angle);
+        pod.vel.x = (int) (pod.vel.x + force.x);
+        pod.vel.y = (int) (pod.vel.y + force.y);
+    }
+}
+
+void Physics::applyWithoutChecks(PodState& pod, PodOutputSim& control) {
+    pod.angle += control.angle;
+    if(control.shieldEnabled) {
+        pod.shieldEnabled = true;
+    } else {
+        pod.vel += Vector::fromMagAngle(control.thrust, pod.angle);
+    }
+}
+
+void Physics::apply(vector<PodState>& pods, PairOutput& control) {
+    apply(pods[0], control.o1);
+    apply(pods[1], control.o2);
+}
+
+void Physics::apply(PodState& pod, PodOutputAbs& control) {
+    Vector force = Physics::forceFromTarget(pod, control.target, control.thrust);
+    float turn = Physics::turnAngle(pod, force);
+    PodOutputSim po = PodOutputSim::fromAbsolute(pod, control);
+    apply(pod, po);
+}
+
 PassedCheckpoint PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race) {
     float time = Physics::passedCircleAt(a.pos, a.pos + a.vel, race.checkpoints[a.nextCheckpoint].pos, CHECKPOINT_RADIUS);
-    if(time == -1) return invalid(a);
+    if(time == -1) return invalid();
     else return PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
 }
 
 void PassedCheckpoint::resolve() {
     if(occurred()) {
-        mPod.nextCheckpoint = mNextCheckpoint;
+        mPod->nextCheckpoint = mNextCheckpoint;
+        mPod->passedCheckpoints++;
+        mPod->turnsSinceCP = 0;
     }
 }
 
 void Physics::simulate(vector<PodState*> pods) {
+    // Update counters.
+    for(PodState* p : pods) {
+        p->turnsSinceCP++;
+        p->turnsSinceShield++;
+    }
     float time = 0;
     vector<PassedCheckpoint> pCPEvents;
     Collision earliest;
@@ -50,7 +105,8 @@ void Physics::simulate(vector<PodState*> pods) {
         float moveTime = hasCollision ? earliest.time() : 1;
 
         for(auto& pod : pods) {
-            pod->pos += pod->vel * (moveTime - time);
+            pod->pos.x += pod->vel.x * (moveTime - time);
+            pod->pos.y += pod->vel.y * (moveTime - time);
         }
         if (hasCollision) {
             earliest.resolve();
@@ -61,7 +117,8 @@ void Physics::simulate(vector<PodState*> pods) {
 
     // Drag and rounding.
     for(auto& pod : pods) {
-        pod->vel = pod->vel * DRAG;
+        pod->vel.x = pod->vel.x * DRAG;
+        pod->vel.y = pod->vel.y * DRAG;
         pod->vel.x = (int) pod->vel.x;
         pod->vel.y = (int) pod->vel.y;
         pod->pos.x = (int) pod->pos.x;
@@ -87,6 +144,9 @@ Collision Collision::testForCollision(PodState& a, PodState& b) {
     } else {
         float backDist = sqrt((POD_RADIUS*2)*(POD_RADIUS*2) - closestPoint.getLengthSq());
         float velLength = sqrt(velX * velX + velY * velY);
+        if(velLength == 0) {
+            return invalidCollision();
+        }
         float bCenterX = closestPoint.x - backDist * (velX / velLength);
         float bCenterY = closestPoint.y - backDist * (velY / velLength);
         float travelX = b.pos.x - bCenterX;
@@ -114,6 +174,7 @@ void Collision::resolve() {
     b->vel += impactNormal * (1/m2);
     // There is a half impulse minimum of 120.
     float impulse = impactNormal.getLength();
+    if(impulse == 0.0) cout << "Impulse is zero" << endl;
     if(impulse < 120.0) {
         impulse *= 120.0 / impulse;
     }
@@ -144,7 +205,7 @@ Vector Physics::forceFromTarget(const PodState& pod, Vector target, float thrust
     return force;
 }
 
-PodState Physics::move(const PodState& pod, const PodOutput& control, float time) {
+PodState Physics::move(const PodState& pod, const PodOutputAbs& control, float time) {
     // TODO: check- should this be angleTo or turnAngle?
     float angle = Physics::angleTo(pod.pos, control.target) - pod.angle;
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
@@ -179,19 +240,21 @@ bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const
 }
 
 float Physics::passedCircleAt(const Vector &beforePos, const Vector &afterPos, const Vector &target, float radius) {
-    Vector D = afterPos -beforePos;
-    Vector F = beforePos - target;
+    float Dx = afterPos.x -beforePos.x;
+    float Dy = afterPos.y -beforePos.y;
+    float Fx = beforePos.x - target.x;
+    float Fy = beforePos.y - target.y;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
-    long a = D.dotProduct(D);
-    long b = 2 * F.dotProduct(D);
-    long c = F.dotProduct(F) - radius * radius;
+    long a = Dx*Dx + Dy*Dy;
+    long b = 2 * (Fx*Dx + Fy*Dy);
+    long c = (Fx*Fx + Fy*Fx) - radius * radius;
     long discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
         return -1;
     } else {
         float disc = sqrt(discrimiminant);
         float t1 = (-b - disc)/(2*a);
-        float t2 = (-b + disc)/(2*a);
+//        float t2 = (-b + disc)/(2*a);
         return (t1 >= 0 && t1 <= 1) ? t1 : -1; // Ignoring t2, which represents passing the circle from the inside || (t2 >= 0 && t2 <= 1);
     }
 }
@@ -232,18 +295,18 @@ Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lin
     }
 }
 
-bool Physics::isCollision(const PodState& podA, const PodOutput& controlA,
-                          const PodState& podB, const PodOutput& controlB, float velThreshold) {
+bool Physics::isCollision(const PodState& podA, const PodOutputAbs& controlA,
+                          const PodState& podB, const PodOutputAbs& controlB, float velThreshold) {
     return isCollision(podA, controlA, podB, controlB, 1, velThreshold);
 }
 
-bool Physics::isCollision(const PodState &podA, const PodOutput &controlA, const PodState &podB,
-                          const PodOutput &controlB, int turns, float velThreshold) {
+bool Physics::isCollision(const PodState &podA, const PodOutputAbs &controlA, const PodState &podB,
+                          const PodOutputAbs &controlB, int turns, float velThreshold) {
     // Need to repeatedly apply the control. To do this, the relative force must be extracted and then reapplied.
     Vector relativeForceA = controlA.target - podA.pos;
     Vector relativeForceB = controlB.target - podB.pos;
-    PodOutput cA = controlA;
-    PodOutput cB = controlB;
+    PodOutputAbs cA = controlA;
+    PodOutputAbs cB = controlB;
     PodState a = podA;
     PodState b = podB;
     for(int i = 0; i < turns; i++) {
@@ -261,19 +324,19 @@ bool Physics::isCollision(const PodState &podA, const PodOutput &controlA, const
     return false;
 }
 
-PodOutput Physics::expectedControl(const PodState& previous, const PodState& current) {
+PodOutputAbs Physics::expectedControl(const PodState& previous, const PodState& current) {
     Vector force = (current.vel * (1/DRAG)) - previous.vel;
-    PodOutput control(force.getLength(), current.pos + force);
+    PodOutputAbs control(force.getLength(), current.pos + force);
     return control;
 }
 
-PodState Physics::extrapolate(const PodState& pod, const PodOutput& control, int turns) {
+PodState Physics::extrapolate(const PodState& pod, const PodOutputAbs& control, int turns) {
     Vector relativeForce = control.target - pod.pos;
-    PodOutput updatedControl;
+    PodOutputAbs updatedControl;
     // Can either use simulation or geometric sums.
     PodState p = pod;
     for(int i = 0; i < turns; i++) {
-        updatedControl = PodOutput(control.thrust, pod.pos + relativeForce);
+        updatedControl = PodOutputAbs(control.thrust, pod.pos + relativeForce);
         p = move(p, updatedControl, turns);
     }
     return p;

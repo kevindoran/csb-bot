@@ -2,39 +2,27 @@
 
 #include <cstdlib>
 #include <stdlib.h>
-#include "DuelBot.h"
+#include "AnnealingBot.h"
 #include "State.h"
 
+PairOutput AnnealingBot::random() {
+    //int randomSpeed = rand() % (MAX_THRUST + 1);
+    int randomSpeed = ((float)rand() / RAND_MAX) > 0.5 ? 0 : MAX_THRUST;
+    float randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
+    bool shieldEnabled = false;
+    PodOutputSim o1(randomSpeed, randomAngle, shieldEnabled, false);
 
-void SimBot::apply(vector<PodState>& pods, PairOutput& control) {
-    apply(pods[0], control.o1);
-    apply(pods[1], control.o2);
-}
-
-void SimBot::apply(PodState& pod, PodOutputSim& control) {
-    pod.angle += control.angle;
-    if(control.shieldEnabled) {
-        pod.shieldEnabled = true;
-    } else {
-        pod.vel += Vector::fromMagAngle(control.thrust, pod.angle);
-    }
-}
-
-void SimBot::apply(PodState& pod, PodOutput& control) {
-    Vector force = Physics::forceFromTarget(pod, control.target, control.thrust);
-    float turn = Physics::turnAngle(pod, force);
-    pod.angle += turn;
-    if(control.thrust == PodOutput::SHIELD) {
-        pod.shieldEnabled = true;
-    } else {
-        pod.vel += force;
-    }
+//        randomSpeed = rand() % (MAX_THRUST + 1);
+    randomSpeed = ((float)rand() / RAND_MAX) > 0.5 ? 0 : MAX_THRUST;
+    randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
+    PodOutputSim o2(randomSpeed, randomAngle, shieldEnabled, false);
+    return PairOutput(o1, o2);
 }
 
 vector<PairOutput> AnnealingBot::randomSolution() {
     vector<PairOutput> sol;
     for(int i = 0; i < turns; i++) {
-        sol.push_back(PairOutput::random());
+        sol.push_back(random());
     }
     return sol;
 }
@@ -61,7 +49,7 @@ vector<PairOutput> AnnealingBot::train(const vector<PodState>& podsToTrain, cons
             // Make edits to one turn of solution.
             int toEdit = rand() % turns;
             saved = solution[toEdit];
-            solution[toEdit] = PairOutput::random();
+            solution[toEdit] = random();
             updated_score =  score(podsToTrain, solution, opponentPods);
             delta = updated_score - currentScore;
             exponent = (-delta / currentScore) / (K * temperature);

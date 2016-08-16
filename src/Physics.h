@@ -3,21 +3,19 @@
 
 #include "State.h"
 #include "Vector.h"
+#include "Bot.h"
 
 class Physics {
     Race race;
 public:
-    Physics(const Race &race) : race(race) {}
+    Physics() {}
 
-    /**
-     * Simulates the movement of a pod and updates the pod itself.
-     */
-    void move(PodState& pod, float time);
+    Physics(const Race &race) : race(race) {}
 
     /**
      * Simulates the movement of a pod for a given time.
      */
-    PodState move(const PodState &pod, const PodOutput &control, float time);
+    PodState move(const PodState &pod, const PodOutputAbs &control, float time);
 
     /**
      * Determines if there in an intersetion between a travel path and a checkpoint (line-circle intersection).
@@ -44,22 +42,22 @@ public:
 
     static bool passedPoint(const Vector &beforePos, const Vector &afterPos, const Vector &target, float radius);
 
-    bool isCollision(const PodState &podA, const PodOutput &controlA,
-                     const PodState &podB, const PodOutput &controlB, float velThreshold);
+    bool isCollision(const PodState &podA, const PodOutputAbs &controlA,
+                     const PodState &podB, const PodOutputAbs &controlB, float velThreshold);
 
-    bool isCollision(const PodState &podA, const PodOutput &controlA,
-                     const PodState &podB, const PodOutput &controlB, int turns, float velThreshold);
+    bool isCollision(const PodState &podA, const PodOutputAbs &controlA,
+                     const PodState &podB, const PodOutputAbs &controlB, int turns, float velThreshold);
 
     /**
      * Guess the next pod's output based on its previous and current state.
      */
-    PodOutput expectedControl(const PodState &previous, const PodState &current);
+    PodOutputAbs expectedControl(const PodState &previous, const PodState &current);
 
     /**
      * Reapply the control to the pod for a number of turns and determine the resulting state. Note, the relative
      * force direction is recomputed each turn (no just moving the pod towards the initial thrust target point).
      */
-    PodState extrapolate(const PodState &pod, const PodOutput &control, int turns);
+    PodState extrapolate(const PodState &pod, const PodOutputAbs &control, int turns);
 
     static Vector closestPointOnLine(Vector lineStart, Vector lineEnd, Vector point);
 
@@ -74,6 +72,13 @@ public:
 
     static Vector forceFromTarget(const PodState &pod, Vector target, float thrust);
 
+    static void apply(PodState &pod, PodOutputSim control);
+
+    static void apply(vector<PodState> &pods, PairOutput &control);
+
+    static void applyWithoutChecks(PodState &pod, PodOutputSim &control);
+
+    static void apply(PodState &pod, PodOutputAbs &control);
 };
 
 class Event {
@@ -84,15 +89,20 @@ public:
 };
 
 class PassedCheckpoint : public Event {
-    PodState& mPod;
-    float mTime;
-    int mNextCheckpoint;
+    PodState* mPod;
     static const int INVALID = -1;
-
-    PassedCheckpoint(PodState& pod, float time, int nextCP) : mPod(pod), mTime(time), mNextCheckpoint(nextCP) {}
-    static PassedCheckpoint invalid(PodState& pod) {return PassedCheckpoint(pod, INVALID, 0);}
+    float mTime = INVALID;
+    int mNextCheckpoint;
+    PassedCheckpoint(PodState& pod, float time, int nextCP) : mPod(&pod), mTime(time), mNextCheckpoint(nextCP) {}
 public:
+    PassedCheckpoint() {}
     static PassedCheckpoint testForPassedCheckpoint(PodState& a, Race& r);
+
+    static PassedCheckpoint& invalid() {
+        static PassedCheckpoint invalid;
+        return invalid;
+    }
+
     float time() const {return mTime;}
     bool occurred() const {return mTime != INVALID;}
     void resolve();

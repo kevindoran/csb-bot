@@ -52,7 +52,7 @@ public:
 TEST_F(PhysicsTest, simpleMove) {
         float acc = 100;
         PodState expected(3100, 0, 85, 0, 0, 0);
-        PodOutput po(acc, podState->pos + Vector(1, 0)); // angle = 0.
+        PodOutputAbs po(acc, podState->pos + Vector(1, 0)); // angle = 0.
         PodState afterMove = physics->move(*podState, po, 1);
         EXPECT_EQ(expected.pos, afterMove.pos);
         EXPECT_EQ(expected.vel, afterMove.vel);
@@ -82,9 +82,9 @@ TEST_F(PhysicsTest, expectedControl) {
 
     PodState ps1(pos1, vel1, angle);
     PodState ps2(pos2, vel2, angle);
-    PodOutput expectedControl(100, Vector(300,200));
+    PodOutputAbs expectedControl(100, Vector(300,200));
     float expectedAngle = physics->angleTo(pos1, expectedControl.target);
-    PodOutput ans = physics->expectedControl(ps1, ps2);
+    PodOutputAbs ans = physics->expectedControl(ps1, ps2);
     float ansAngle = physics->angleTo(pos1, ans.target);
     EXPECT_FLOAT_EQ(expectedControl.thrust, ans.thrust);
     EXPECT_FLOAT_EQ(expectedAngle, ansAngle);
@@ -130,12 +130,12 @@ TEST_F(PhysicsTest, isCollision) {
     Vector velA(200,0);
     float angleA = 0;
     PodState psA(posA, velA, angleA, 0);
-    PodOutput controlA(100, posA + Vector(1,0));
+    PodOutputAbs controlA(100, posA + Vector(1,0));
     Vector posB(1200, 0);
     Vector velB(-200, 0);
     float angleB = M_PI;
     PodState psB(posB, velB, angleB, 0);
-    PodOutput controlB(100, posB + Vector(-1,0));
+    PodOutputAbs controlB(100, posB + Vector(-1,0));
     float velThreshold = 0; // Just testing any collision.
     bool isCollision = physics->isCollision(psA, controlA, psB, controlB, velThreshold);
     EXPECT_TRUE(isCollision);

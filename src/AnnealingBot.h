@@ -1,74 +1,27 @@
-#ifndef CODERSSTRIKEBACK_DUELBOT_H
-#define CODERSSTRIKEBACK_DUELBOT_H
+#ifndef CODERSSTRIKEBACK_ANNEALINGBOT_H
+#define CODERSSTRIKEBACK_ANNEALINGBOT_H
 
 #include <limits>
 #include <cstdlib>
 
 #include "State.h"
+#include "Bot.h"
 #include "Navigation.h"
 #include "Physics.h"
 
-struct PodOutputSim {
-    int thrust;
-    float angle;
-    bool shieldEnabled;
-
-    PodOutputSim() {}
-
-    PodOutputSim(int thrust, float angle, bool shieldEnabled) : thrust(thrust), angle(angle),
-                                                                 shieldEnabled(shieldEnabled) {}
-
-    PodOutput absolute(const PodState& pod) {
-        cerr << "Pod pos: "  << pod.pos << endl;
-        Vector target = pod.pos + Vector::fromMagAngle(1000, pod.angle + angle);
-        return PodOutput(thrust, target);
-    }
-};
-
-class PairOutput {
-public:
-    PodOutputSim o1;
-    PodOutputSim o2;
-
-    PairOutput() {}
-
-    PairOutput(PodOutputSim o1, PodOutputSim o2) : o1(o1), o2(o2) {}
-
-    static PairOutput random() {
-        //int randomSpeed = rand() % (MAX_THRUST + 1);
-        int randomSpeed = ((float)rand() / RAND_MAX) > 0.5 ? 0 : MAX_THRUST;
-        float randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
-        bool shieldEnabled = false;
-        PodOutputSim o1(randomSpeed, randomAngle, shieldEnabled);
-
-//        randomSpeed = rand() % (MAX_THRUST + 1);
-        randomSpeed = ((float)rand() / RAND_MAX) > 0.5 ? 0 : MAX_THRUST;
-        randomAngle = Physics::degreesToRad(-18 + rand() % (MAX_ANGLE_DEG * 2 + 1));
-        PodOutputSim o2(randomSpeed, randomAngle, shieldEnabled);
-        return PairOutput(o1, o2);
-    }
-};
-
-
-class SimBot {
-public:
-    virtual void move(vector<PodState> &ourPods, vector<PodState> &enemyPods) = 0;
-
-    void apply(vector<PodState> &pods, PairOutput& control);
-
-    void apply(PodState &pod, PodOutputSim& control);
-
-    void apply(PodState &pod, PodOutput& control);
-};
 
 class CustomAI : public SimBot {
     vector<PairOutput> moves;
+    Race* race;
     int turn = 0;
 public:
     CustomAI(vector<PairOutput> moves) : moves(moves) {}
 
+    void init(Race& r) {
+        race = &r;
+    }
     void move(vector<PodState> &ourPods, vector<PodState> &enemyPods) {
-        apply(ourPods, moves[turn++]);
+        Physics::apply(ourPods, moves[turn++]);
     }
 };
 
@@ -76,11 +29,21 @@ public:
  * Bot with very low computational requirements.
  */
 class MinimalBot : public SimBot {
-    Race &race;
+    Race race;
     Physics physics;
     Navigation nav;
 public:
-    MinimalBot(Race &race) : race(race), physics(race), nav(race) {}
+    MinimalBot() {}
+
+    MinimalBot(Race& race) {
+        init(race);
+    }
+
+    void init(Race& r) {
+        race = r;
+        physics = Physics(race);
+        nav = Navigation(race);
+    }
 
     /**
      * ourPods and enemyPods must be orderd by progress; it is assumed that ourPods[0] is our lead pod.
@@ -105,7 +68,7 @@ public:
         ourPods[0].vel.x += force.x;
         ourPods[0].vel.y += force.y;
         ourPods[0].angle += clippedAngle;
-//        PodOutput output = nav.turnSaturationAdjust(ourPods[0], PodOutput(MAX_THRUST, target));
+//        PodOutputAbs output = nav.turnSaturationAdjust(ourPods[0], PodOutputAbs(MAX_THRUST, target));
 
         float targetx =  enemyPods[0].pos.x + (race.checkpoints[enemyPods[0].nextCheckpoint].pos.x - enemyPods[0].pos.x) * 0.80;
         float targety =  enemyPods[0].pos.y + (race.checkpoints[enemyPods[0].nextCheckpoint].pos.y - enemyPods[0].pos.y) * 0.80;
@@ -119,22 +82,12 @@ public:
     };
 };
 
-class DuelBot {
-public:
-    virtual void init(Race& race) = 0;
-    /**
-     * Calculate the moves for both podracers.
-     */
-    virtual PairOutput move(const vector<PodState> &ourPods, const vector<PodState> &enemyPods) = 0;
-};
-
-
 class AnnealingBot : public DuelBot {
-    Race &race;
+    Race race;
+    Physics physics;
     static const int turns = 5;
     static constexpr float maxScore = numeric_limits<float>::infinity();
     static constexpr float minScore = -numeric_limits<float>::infinity();
-    Physics physics;
 
     vector<PairOutput> randomSolution();
 
@@ -144,18 +97,29 @@ class AnnealingBot : public DuelBot {
 
     float score(vector<PodState> &pods, vector<PodState> &enemyPods);
 
-public:
-    AnnealingBot(Race &race) : race(race), physics(race) {}
+    float score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods);
 
-    PairOutput move(const vector<PodState> &ourPods, const vector<PodState> &enemyPods) {
+    PairOutput random();
+
+public:
+    AnnealingBot() {}
+
+    AnnealingBot(Race& r) {
+        init(r);
+    }
+
+    void init(Race& r) {
+        race = r;
+        physics = Physics(race);
+    }
+
+    PairOutput move(GameState& gameState) {
+        const vector<PodState> &ourPods = gameState.ourState().pods;
+        const vector<PodState> &enemyPods = gameState.enemyState().pods;
         vector<PairOutput> solution = train(ourPods, enemyPods);
         return solution[0];
     };
-
-
-
-    float score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods);
 };
 
 
-#endif //CODERSSTRIKEBACKC_DUELBOT_H
+#endif //CODERSSTRIKEBACKC_ANNEALINGBOT_H

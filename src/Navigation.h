@@ -11,22 +11,23 @@ class Navigation {
     // Si = ar^0 + ar^1 + ar^2...ar^i
     float geometric_sum(float a, float r, int r1, int r2);
 public:
-
-    Vector find_intercept(const PodState &pod, const PodState &enemy);
+    Navigation() {}
 
     Navigation(const Race &race) : race(race), physics(race) {}
 
-    PodOutput seek(const PodState &pod, const Vector &target);
+    Vector find_intercept(const PodState &pod, const PodState &enemy);
 
-    PodOutput turnSaturationAdjust(const PodState &pod, const PodOutput &control);
+    PodOutputAbs seek(const PodState &pod, const Vector &target);
 
-    PodOutput preemptSeek(const PodState &pod);
+    PodOutputAbs turnSaturationAdjust(const PodState &pod, const PodOutputAbs &control);
 
-    PodOutput intercept(const PodState &pod, const PodState &enemy);
+    PodOutputAbs preemptSeek(const PodState &pod);
 
-    PodOutput preemptSeek(const PodState &pod, Vector intialTarget, float radius, Vector nextTarget);
+    PodOutputAbs intercept(const PodState &pod, const PodState &enemy);
 
-    PodOutput preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget,
+    PodOutputAbs preemptSeek(const PodState &pod, Vector intialTarget, float radius, Vector nextTarget);
+
+    PodOutputAbs preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget,
                           int turnThreshold, int switchThreshold);
 
     int turnsUntilReached(const PodState &podInit, Vector target, float withinDist);

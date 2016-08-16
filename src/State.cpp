@@ -1,5 +1,23 @@
 
 #include "State.h"
+#include "Physics.h"
+
+PodOutputSim PodOutputSim::fromAbsolute(const PodState& pod, const PodOutputAbs& abs) {
+    PodOutputSim o;
+    o.thrust = abs.thrust;
+    if(abs.thrust == PodOutputAbs::SHIELD) o.shieldEnabled = true;
+    else if(abs.thrust == PodOutputAbs::BOOST) o.boostEnabled = true;
+    o.angle = Physics::turnAngle(pod, abs.target);
+    return o;
+}
+
+PodOutputAbs PodOutputSim::absolute(const PodState& pod) {
+    Vector target = pod.pos + Vector::fromMagAngle(1000, pod.angle + angle);
+    PodOutputAbs po(thrust, target);
+    if(shieldEnabled) po.enableShield();
+    else if(boostEnabled) po.enableBoost();
+    return po;
+}
 
 void State::preTurnUpdate(vector<PlayerState> playerStates) {
     if(turn > 0) {
@@ -45,17 +63,17 @@ void State::preTurnUpdate(vector<PlayerState> playerStates) {
     }
 }
 
-void State::postTurnUpdate(PodOutput pod1, PodOutput pod2) {
+void State::postTurnUpdate(PodOutputAbs pod1, PodOutputAbs pod2) {
     update(pod1, 0);
     update(pod2, 1);
     previous = current;
     turn++;
 }
 
-void State::update(const PodOutput& pod, int id) {
-    if(pod.thrust == PodOutput::BOOST) {
+void State::update(const PodOutputAbs& pod, int id) {
+    if(pod.thrust == PodOutputAbs::BOOST) {
         current.ourState().pods[id].boostAvailable = false;
-    } else if(pod.thrust == PodOutput::SHIELD) {
+    } else if(pod.thrust == PodOutputAbs::SHIELD) {
         current.ourState().pods[id].turnsSinceShield = 0;
     }
 }

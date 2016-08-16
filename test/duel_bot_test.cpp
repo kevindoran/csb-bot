@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "InputParser.h"
 
-#include "DuelBot.h"
+#include "AnnealingBot.h"
 
 using namespace std;
 
@@ -24,6 +24,7 @@ protected:
             "4000 1000 0 0 45 0\n"; //  player 2 pod 2
 
     Race r;
+    GameState gs;
     vector<PlayerState> playerStates;
 
     DuelBotTest() {
@@ -31,6 +32,7 @@ protected:
         InputParser ip(stream);
         r = ip.init();
         playerStates = ip.parseTurn();
+        gs = GameState(r, playerStates, 0);
     }
 };
 
@@ -38,7 +40,7 @@ TEST_F(DuelBotTest, annealing_bot_test) {
     AnnealingBot bot(r);
     for(int i = 0; i < 50; i++) {
         cout << "#" << i << endl;
-        PairOutput control = bot.move(playerStates[0].pods, playerStates[1].pods);
+        PairOutput control = bot.move(gs);
     }
 }
 

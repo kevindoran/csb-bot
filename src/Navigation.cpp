@@ -7,12 +7,11 @@
 #include "Navigation.h"
 
 
-PodOutput Navigation::seek(const PodState &pod, const Vector &target) {
+PodOutputAbs Navigation::seek(const PodState &pod, const Vector &target) {
     Vector desired_vel = (target - pod.pos) * 0.5;
     Vector vel_diff = desired_vel - pod.vel;
     Vector thrust = vel_diff * (MAX_THRUST / max(1.0f, vel_diff.getLength()));
-    cerr << "1 " << (vel_diff + pod.pos) << endl;
-    return PodOutput(thrust.getLength(), vel_diff + pod.pos);
+    return PodOutputAbs(thrust.getLength(), vel_diff + pod.pos);
 }
 
 // One side of the normal distribution's CDF.
@@ -22,8 +21,8 @@ float normal_cdf_half(float x) {
 }
 
 // Decrease the thrust if the turn angle in greater than the maximum turn angle.
-PodOutput Navigation::turnSaturationAdjust(const PodState &pod, const PodOutput &control) {
-    if (control.thrust == PodOutput::BOOST || control.thrust == PodOutput::SHIELD) {
+PodOutputAbs Navigation::turnSaturationAdjust(const PodState &pod, const PodOutputAbs &control) {
+    if (control.thrust == PodOutputAbs::BOOST || control.thrust == PodOutputAbs::SHIELD) {
         return control;
     }
     float cut_off = M_PI / 2 + MAX_ANGLE;
@@ -47,11 +46,11 @@ PodOutput Navigation::turnSaturationAdjust(const PodState &pod, const PodOutput 
         // are only considering half the distribution- imagine the normal distribution folded on itself through 0).
         // 2 * (normal_dist(1) - normal_dist(0)) = 2 * normal_dist(-1) ~= 0.30
     }
-    PodOutput adjusted(acc, control.target);
+    PodOutputAbs adjusted(acc, control.target);
     return adjusted;
 }
 
-PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget) {
+PodOutputAbs Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget) {
     // If we are on target within 5 turns, we will thrust towards the next CP. If we are not on target within 5 turns
     // but are on target within 6, turn towards the next CP without thrusting.
     int defaultTurn = 6;
@@ -59,7 +58,7 @@ PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, flo
     return preemptSeek(pod, initialTarget, radius, nextTarget, defaultTurn, defaultSwitch);
 }
 
-PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius,
+PodOutputAbs Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius,
                                   Vector nextTarget, int turnThreshold, int switchThreshold) {
     int i = 0;
     for (; i <= turnThreshold; i++) {
@@ -80,7 +79,7 @@ PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, flo
         return turnSaturationAdjust(pod, seek(pod, nextTarget));
     } else if (i <= turnThreshold) {
         // We will drift towards current target and turn toward the next CP.
-        PodOutput po = seek(pod, nextTarget);
+        PodOutputAbs po = seek(pod, nextTarget);
         po.thrust = 0;
         return po;
     } else {
@@ -89,12 +88,12 @@ PodOutput Navigation::preemptSeek(const PodState &pod, Vector initialTarget, flo
     }
 }
 
-PodOutput Navigation::preemptSeek(const PodState &pod) {
+PodOutputAbs Navigation::preemptSeek(const PodState &pod) {
     Checkpoint nextCP = race.checkpoints[(pod.nextCheckpoint + 1) % race.checkpoints.size()];
     return preemptSeek(pod, race.checkpoints[pod.nextCheckpoint].pos, CHECKPOINT_RADIUS, nextCP.pos);
 }
 
-PodOutput Navigation::intercept(const PodState &pod, const PodState &enemy) {
+PodOutputAbs Navigation::intercept(const PodState &pod, const PodState &enemy) {
     return seek(pod, find_intercept(pod, enemy));
 }
 
@@ -147,7 +146,7 @@ int Navigation::turnsUntilReached(const PodState &podInit, Vector target, float 
     int maxTurns = 30;
     PodState pod = podInit;
     PodState previous = podInit;
-    PodOutput control;
+    PodOutputAbs control;
     int i = 0;
     while ((target - pod.pos).getLength() > withinDist &&
            !physics.passedPoint(previous.pos, pod.pos, target, withinDist)) {
