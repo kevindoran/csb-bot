@@ -10,6 +10,12 @@ def topo_dependencies(main_file):
     seen = set()
     sorted_deps = []
     dfs(main_file, seen, sorted_deps)
+
+    for header in sorted_deps:
+        cpp_file = matching_cpp_file(header)
+        if os.path.exists(cpp_file):
+            dfs(cpp_file, seen, sorted_deps)
+
     return sorted_deps
 
 
@@ -24,14 +30,9 @@ def dfs(file, seen, res):
 def dependencies(file):
     with open(file) as f:
         filetext = f.read()
-        file_names = re.findall(local_include_regex, filetext)
-    cpp_file = matching_cpp_file(file)
-    if os.path.exists(cpp_file):
-        with open(cpp_file) as cf:
-            filetext = cf.read()
-            file_names_cpp = re.findall(local_include_regex, filetext)
-            file_names.extend(file_names_cpp)
-    return file_names
+        headers = re.findall(local_include_regex, filetext)
+        return headers
+
 
 def matching_cpp_file(header_file):
     cpp_file = header_file.split('.')[0] + '.' + cpp_extension
@@ -46,11 +47,7 @@ def merge(main_file):
         with open(header) as hf:
             filetext = hf.read()
             filetext = re.sub(local_include_regex, '', filetext)
-            out += filetext
-
-            cpp_file = matching_cpp_file(header)
-            if os.path.exists(cpp_file):
-                cpp_files.append(cpp_file)
+            out += filetext + '\n'
 
     for cpp_file in cpp_files:
         if cpp_file == main_file:

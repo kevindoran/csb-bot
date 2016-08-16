@@ -1,16 +1,17 @@
 #include <limits>
 
 #include <cstdlib>
+#include <stdlib.h>
 #include "DuelBot.h"
 #include "State.h"
 
 
-void SimBot::apply(vector<PodState>& pods, PairOutput control) {
+void SimBot::apply(vector<PodState>& pods, PairOutput& control) {
     apply(pods[0], control.o1);
     apply(pods[1], control.o2);
 }
 
-void SimBot::apply(PodState& pod, PodOutputSim control) {
+void SimBot::apply(PodState& pod, PodOutputSim& control) {
     pod.angle += control.angle;
     if(control.shieldEnabled) {
         pod.shieldEnabled = true;
@@ -19,7 +20,7 @@ void SimBot::apply(PodState& pod, PodOutputSim control) {
     }
 }
 
-void SimBot::apply(PodState& pod, PodOutput control) {
+void SimBot::apply(PodState& pod, PodOutput& control) {
     Vector force = Physics::forceFromTarget(pod, control.target, control.thrust);
     float turn = Physics::turnAngle(pod, force);
     pod.angle += turn;
@@ -38,16 +39,16 @@ vector<PairOutput> AnnealingBot::randomSolution() {
     return sol;
 }
 
-vector<PairOutput> AnnealingBot::train(const vector<PodState> podsToTrain, const vector<PodState> opponentPods) {
+vector<PairOutput> AnnealingBot::train(const vector<PodState>& podsToTrain, const vector<PodState>& opponentPods) {
     float temperature = 1;
     float K = 0.01; // Boltzman's constant.
-    float coolingFraction = 0.95;
-    float coolingSteps = 100;
-    int stepsPerTemp = 200;
+    float coolingFraction = 0.92;
+    float coolingSteps = 75;
+    int stepsPerTemp = 150;
     float exponent;
     float merit, flip;
     vector<PairOutput> solution = randomSolution();
-    float currentScore = score(podsToTrain, solution, opponentPods, MinimalBot(race));
+    float currentScore = score(podsToTrain, solution, opponentPods);
     float updated_score;
     float startScore;
     float delta;
@@ -61,7 +62,7 @@ vector<PairOutput> AnnealingBot::train(const vector<PodState> podsToTrain, const
             int toEdit = rand() % turns;
             saved = solution[toEdit];
             solution[toEdit] = PairOutput::random();
-            updated_score =  score(podsToTrain, solution, opponentPods, MinimalBot(race));
+            updated_score =  score(podsToTrain, solution, opponentPods);
             delta = updated_score - currentScore;
             exponent = (-delta / currentScore) / (K * temperature);
             merit = exp(exponent);
@@ -89,7 +90,7 @@ vector<PairOutput> AnnealingBot::train(const vector<PodState> podsToTrain, const
 }
 
 
-float AnnealingBot::score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods, MinimalBot(race)) {
+float AnnealingBot::score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods) {
     CustomAI* customAI = new CustomAI(solution);
     MinimalBot* minimalBot = new MinimalBot(race);
     simulate(pods, customAI, enemyPods, minimalBot, turns);
@@ -98,7 +99,7 @@ float AnnealingBot::score(vector<PodState> pods, vector<PairOutput> solution, ve
     return score(pods, enemyPods);
 }
 
-float AnnealingBot::score(vector<PodState> pods, vector<PodState> enemyPods) {
+float AnnealingBot::score(vector<PodState>& pods, vector<PodState>& enemyPods) {
     int totalCPs = race.totalCPCount();
     if(pods[0].passedCheckpoints == totalCPs) {
         return maxScore;
@@ -108,16 +109,16 @@ float AnnealingBot::score(vector<PodState> pods, vector<PodState> enemyPods) {
 
     Checkpoint& nextCP = race.checkpoints[pods[0].nextCheckpoint];
     float racerScore = pods[0].passedCheckpoints * 50000 - (nextCP.pos - pods[0].pos).getLength();
+    racerScore -= abs(physics.turnAngle(pods[0], nextCP.pos));
+//    Checkpoint& enemyNextCP = race.checkpoints[enemyPods[0].nextCheckpoint];
+//    float enemyRacerScore = enemyPods[0].passedCheckpoints * 5000 - (enemyNextCP.pos - enemyPods[0].pos).getLength();
 
-    Checkpoint& enemyNextCP = race.checkpoints[enemyPods[0].nextCheckpoint];
-    float enemyRacerScore = enemyPods[0].passedCheckpoints * 5000 - (enemyNextCP.pos - enemyPods[0].pos).getLength();
 
-
-    float chaserScore = -(enemyNextCP.pos - pods[1].pos).getLength();
+//    float chaserScore = -(enemyNextCP.pos - pods[1].pos).getLength();
 //    chaserScore -= (pods[0].pos - pods[1].pos).getLength();
-    chaserScore -= physics.turnAngle(pods[1], enemyPods[0].pos);
+//    chaserScore -= physics.turnAngle(pods[1], enemyPods[0].pos);
 
-    return -((racerScore - enemyRacerScore) + chaserScore);
+    return -racerScore;
 }
 
 void AnnealingBot::simulate(vector<PodState>& pods1, SimBot* pods1Sim, vector<PodState>& pods2, SimBot* pods2Sim, int turns) {
