@@ -136,8 +136,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os, const Vector &vector) {
         os << "(" << vector.x << "," << vector.y << ")";
-        return
-                os;
+        return os;
     }
 };
 
