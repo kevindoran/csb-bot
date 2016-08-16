@@ -31,7 +31,7 @@ vector<PlayerState> InputParser::parseTurn() {
             PodState pod(x, y, vx, vy, angleRad, nextCheckpoint);
             podStates.push_back(pod);
         }
-        PlayerState ps(i, podStates);
+        PlayerState ps(podStates);
         playerStates.push_back(ps);
     }
     return playerStates;

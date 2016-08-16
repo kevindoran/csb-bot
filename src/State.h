@@ -93,12 +93,11 @@ struct PodState {
 struct PlayerState {
     vector<PodState> pods;
     vector<PodState> lastPods;
-    int id; // Why is this needed?
     int leadPodID = 0;
-    PlayerState(int id, vector<PodState> pods) : id(id), pods(pods) {}
+    PlayerState( vector<PodState> pods) : pods(pods) {}
 
-    PlayerState(int id, vector<PodState> pods, vector<PodState> lastPods)
-            : id(id), pods(pods), lastPods(lastPods) {}
+    PlayerState(vector<PodState> pods, vector<PodState> lastPods)
+            : pods(pods), lastPods(lastPods) {}
 
     PodState& leadPod() {
         return pods[leadPodID];
