@@ -4,6 +4,9 @@
 #include "State.h"
 #include "AnnealingBot.h"
 #include "Physics.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 class GameHistory {
 public:
@@ -17,8 +20,31 @@ public:
     void recordTurn(PodState p11, PodState p12, PodState p21, PodState p22) {
         player1Pod1.push_back(p11);
         player1Pod2.push_back(p12);
-        player1Pod1.push_back(p21);
+        player2Pod1.push_back(p21);
         player2Pod2.push_back(p22);
+    }
+
+    json toJson(PodState& podState) {
+        json j;
+        j["pos"]["x"] = podState.pos.x;
+        j["pos"]["y"] = podState.pos.y;
+        j["vel"]["x"] = podState.vel.x;
+        j["vel"]["y"] = podState.vel.y;
+        j["angle"] = podState.angle;
+        j["shieldEnabled"] = podState.shieldEnabled;
+        return j;
+    }
+    void writeToStream(ostream& out) {
+        json game;
+        for(int i = 0; i < player1Pod1.size(); i++) {
+            json bothStates;
+            bothStates["p1pod1"] = toJson(player1Pod1[i]);
+            bothStates["p1pod2"] = toJson(player1Pod2[i]);
+            bothStates["p2pod1"] = toJson(player2Pod1[i]);
+            bothStates["p2pod2"] = toJson(player2Pod2[i]);
+            game.push_back(bothStates);
+        }
+        out << game;
     }
 };
 
@@ -95,6 +121,7 @@ public:
 
             if (victory(aPods, bPods) || victory(bPods, aPods)) {
                 cout << "Finished. Winner is: bot #" << (victory(aPods, bPods) ? "1" : "2") << endl;
+                cout << "Victory on turn: " << i << endl;
                 return history;
             }
             stateA.preTurnUpdate(stripAndCombine(aPods, bPods));
