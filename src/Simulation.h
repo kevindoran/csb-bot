@@ -60,8 +60,8 @@ class Simulation {
         float gap = POD_RADIUS + 100;
         Vector posA1 = race.checkpoints[0].pos + startLine * gap;
         Vector posA2 = race.checkpoints[0].pos - startLine * gap;
-        Vector posB1 = race.checkpoints[0].pos +  startLine * (2*gap + 100);
-        Vector posB2 = race.checkpoints[0].pos - startLine * (2*gap + 100);
+        Vector posB1 = race.checkpoints[0].pos +  startLine * 3 * gap;
+        Vector posB2 = race.checkpoints[0].pos - startLine * 3 * gap;
         float angle = Physics::angleTo(posA1, race.checkpoints[1].pos);
         aPods[0] = PodState(posA1, Vector(0,0), angle, 1);
         angle = Physics::angleTo(posA2, race.checkpoints[1].pos);
