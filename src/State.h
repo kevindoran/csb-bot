@@ -68,7 +68,7 @@ struct PodState {
     int nextCheckpoint = 0;
     int passedCheckpoints = 0;
     int turnsSinceCP = 0;
-    int turnsSinceShield = 0;
+    int turnsSinceShield = SHIELD_COOLDOWN + 1;
     bool boostAvailable = true;
 
     PodState() {}
@@ -166,10 +166,10 @@ struct PodOutputAbs {
 
 class PodOutputSim {
 public:
-    int thrust;
-    float angle;
-    bool shieldEnabled;
-    bool boostEnabled;
+    int thrust = 0;
+    float angle = 0;
+    bool shieldEnabled = false;
+    bool boostEnabled = false;
 
     PodOutputSim() {}
 

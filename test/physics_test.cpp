@@ -180,6 +180,12 @@ TEST(PhysicsTest2, closest_point_on_line) {
     Vector p4(0, 0);
     closest = Physics::closestPointOnLine(line1, line2, p4);
     EXPECT_EQ(line1, p4);
+
+    line1 = Vector(-5, 10);
+    line2 = Vector(-8, 2);
+    Vector p5(-6, 1);
+    closest = Physics::closestPointOnLine(line1, line2, p5);
+    EXPECT_EQ(line2, closest);
 }
 
 TEST_F(PhysicsTest, simulate_collision) {

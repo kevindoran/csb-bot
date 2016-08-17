@@ -3,7 +3,6 @@
 #include <cmath>
 #include <algorithm>
 #include <math.h>
-#include <mshtmlc.h>
 
 #include "State.h"
 #include "Physics.h"
@@ -86,7 +85,7 @@ void Physics::simulate(vector<PodState*> pods) {
             // Collision or checkpoint passing first?
             for (int j = i + 1; j < pods.size(); j++) {
                 Collision collision = Collision::testForCollision(*pods[i], *pods[j]);
-                if (collision.occurred() && (!hasCollision || earliest.time() > collision.time())) {
+                if (collision.occurred() && collision.time() + time < 1.0 && (!hasCollision || earliest.time() > collision.time())) {
                     hasCollision = true;
                     earliest = collision;
                 }
@@ -102,17 +101,17 @@ void Physics::simulate(vector<PodState*> pods) {
                 pcp.resolve();
             }
         }
-        float moveTime = hasCollision ? earliest.time() : 1;
+        float moveTime = hasCollision ? earliest.time() : 1.0 - time;
 
         for(auto& pod : pods) {
-            pod->pos.x += pod->vel.x * (moveTime - time);
-            pod->pos.y += pod->vel.y * (moveTime - time);
+            pod->pos.x += pod->vel.x * moveTime;
+            pod->pos.y += pod->vel.y * moveTime;
         }
         if (hasCollision) {
             earliest.resolve();
             hasCollision = false;
         }
-        time = moveTime;
+        time += moveTime;
     }
 
     // Drag and rounding.
@@ -135,6 +134,10 @@ Collision Collision::testForCollision(PodState& a, PodState& b) {
     float pathStartY = b.pos.y - a.pos.y;
     float velX = b.vel.x - a.vel.x;
     float velY = b.vel.y - a.vel.y;
+    // If the bots have the same speed.
+    if(velX == 0 && velY == 0) {
+        return invalidCollision();
+    }
     float pathEndX = pathStartX + velX;
     float pathEndY = pathStartY + velY;
 
@@ -142,17 +145,23 @@ Collision Collision::testForCollision(PodState& a, PodState& b) {
     if(closestPoint.getLengthSq() > (2*POD_RADIUS)*(2*POD_RADIUS)) {
         return invalidCollision();
     } else {
-        float backDist = sqrt((POD_RADIUS*2)*(POD_RADIUS*2) - closestPoint.getLengthSq());
+//        if((closestPoint.x == pathStartX && closestPoint.y == pathStartY) || (closestPoint.x == pathEndX && closestPoint.y == pathEndY)) {
+            //cerr << "Warning, probably a faulty collision." << endl;
+//        }
         float velLength = sqrt(velX * velX + velY * velY);
-        if(velLength == 0) {
-            return invalidCollision();
-        }
-        float bCenterX = closestPoint.x - backDist * (velX / velLength);
-        float bCenterY = closestPoint.y - backDist * (velY / velLength);
-        float travelX = b.pos.x - bCenterX;
-        float travelY = b.pos.y - bCenterY;
-        float travelDist = sqrt(travelX*travelX + travelY * travelY);
+        float parallelDist = abs((pathStartX * (pathEndX - pathStartX) + pathStartY * (pathEndY - pathStartY)) / velLength);
+        float tangentDistSq = (pathStartX*pathStartX + pathStartY*pathStartY) - (parallelDist*parallelDist);
+
+        float backDist = sqrt((POD_RADIUS*2)*(POD_RADIUS*2) - tangentDistSq);//closestPoint.getLengthSq());
+
+//        float bCenterX = closestPoint.x - backDist * (velX / velLength);
+//        float bCenterY = closestPoint.y - backDist * (velY / velLength);
+//        float travelX = pathStartX - bCenterX;
+//        float travelY = pathStartY - bCenterY;
+//        float travelDist = sqrt(travelX*travelX + travelY * travelY);
+        float travelDist = parallelDist - backDist;
         float time = travelDist / velLength;
+        if(time < 0.00001) return invalidCollision();
 //        Vector collisionPoint = a.vel * time + bCenter * 0.5;
         // Reset to normal reference frame.
         // Turns out that the actual collision point is not important, as the bots move to it before resolving the
@@ -174,7 +183,7 @@ void Collision::resolve() {
     b->vel += impactNormal * (1/m2);
     // There is a half impulse minimum of 120.
     float impulse = impactNormal.getLength();
-    if(impulse == 0.0) cout << "Impulse is zero" << endl;
+    if(impulse == 0.0) cerr << "Impulse is zero" << endl;
     if(impulse < 120.0) {
         impulse *= 120.0 / impulse;
     }
@@ -266,11 +275,11 @@ Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lin
     // Test if the closest point is one of the line segment end points.
     float pathX = lineEndX - lineStartX;
     float pathY = lineEndY - lineStartY;
-//    if(path.dotProduct(point - lineEnd) > 0) {
+    // While this next bit works for line segments, we need to calculate the collision point, which
+    // needs to treat this method as closest point on
     if((pathX * (point.x - lineEndX) + pathY * (point.y - lineEndY)) > 0) {
         // Closest point is on the further side of lineEnd.
         return Vector(lineEndX, lineEndY);
-//    } else if((-path).dotProduct(point - lineStart) > 0) {
     } else if((pathX * (lineStartX - point.x) + pathY * (lineStartY - point.y)) > 0) {
         // Closest point is on the further side of lineStart.
         return Vector(lineStartX, lineStartY);
