@@ -72,6 +72,15 @@ public:
         return lengthSq;
     }
 
+    // Useful when there is no need to create another Vector instance and call getLengthSq().
+    static float distSq(const Vector& a, const Vector& b) {
+        return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+    }
+
+    static float dist(const Vector& a, const Vector& b) {
+        return std::sqrt(distSq(a, b));
+    }
+
     // Could replace with overloading Vector * Vector.
     float dotProduct(const Vector& other) const {
         return x * other.x + y * other.y;
