@@ -89,14 +89,16 @@ class AnnealingBot : public DuelBot {
     MinimalBot enemyBot;
     PairOutput previousSolution[turns];
     bool hasPrevious = false;
+    PodState enemySimHistory[turns + 1][POD_COUNT];
+    PodState ourSimHistory[turns + 1][POD_COUNT];
 
     void train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]);
 
-    float score(const PodState pods[], const PodState enemyPods[]);
+    float score(const PodState* pods[], const PodState* enemyPods[]);
 
-    float score(const PodState pods[], const PairOutput solution[], const PodState enemyPods[]);
+    float score(const PairOutput solution[], int startFromTurn);
 
-    void simulate(PodState pods1[], SimBot *pods1Sim, PodState pods2[], SimBot *pods2Sim, int turns);
+    void simulate(SimBot *pods1Sim, SimBot *pods2Sim, int turns, int startFromTurn);
 
     void randomSolution(PairOutput sol[]);
 

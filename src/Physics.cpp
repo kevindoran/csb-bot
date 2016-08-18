@@ -79,25 +79,25 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
     float time = 0;
     vector<PassedCheckpoint> pCPEvents;
     Collision earliest;
-//    int earliestIdx[2];
+    int earliestIdx[2];
     bool started = false;
     bool hasCollision = false;
     bool occurred = false;
     Collision collision;
     PassedCheckpoint cpEvent;
-//    int skip[2] = {-1, -1};
+    int skip[2] = {-1, -1};
     while(time < 1) {
         for (int i = 0; i < POD_COUNT*2 - 1; i++) {
             // Collision or checkpoint passing first?
             for (int j = i + 1; j < POD_COUNT*2; j++) {
                 // These two had the previous collision.
-//                if(skip[1] == i && skip[2] == j) continue;
+                if(skip[1] == i && skip[2] == j) continue;
                 occurred = Collision::testForCollision(*pods[i], *pods[j], &collision);
                 if (occurred && collision.time() + time < 1.0 && (!hasCollision || earliest.time() > collision.time())) {
                     hasCollision = true;
                     earliest = collision;
-//                    earliestIdx[0] = i;
-//                    earliestIdx[1] = j;
+                    earliestIdx[0] = i;
+                    earliestIdx[1] = j;
                 }
             }
             // Can optimize by keeping list of pc events and resolving all those before the earliest collision.
@@ -120,8 +120,8 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         if (hasCollision) {
             earliest.resolve();
             hasCollision = false;
-//            skip[0] = earliestIdx[0];
-//            skip[1] = earliestIdx[1];
+            skip[0] = earliestIdx[0];
+            skip[1] = earliestIdx[1];
         }
         time += moveTime;
     }
@@ -363,31 +363,23 @@ PodState Physics::extrapolate(const PodState& pod, const PodOutputAbs& control, 
     return p;
 }
 
-void Physics::orderByProgress(vector<PodState> pods) {
-    if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
-        // Already in order.
-        return;
-    } else if(pods[1].passedCheckpoints > pods[0].passedCheckpoints
-              || (race.checkpoints[pods[0].nextCheckpoint] - pods[0].pos).getLengthSq()
-                 > (race.checkpoints[pods[1].nextCheckpoint] - pods[1].pos).getLengthSq()) {
-        // Swap.
-        PodState temp = pods[0];
-        pods[0] = pods[1];
-        pods[1] = temp;
-    }
-}
-
 void Physics::orderByProgress(PodState pods[]) {
     if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
         // Already in order.
         return;
-    } else if(pods[1].passedCheckpoints > pods[0].passedCheckpoints
-              || (race.checkpoints[pods[0].nextCheckpoint] - pods[0].pos).getLengthSq()
-                 > (race.checkpoints[pods[1].nextCheckpoint] - pods[1].pos).getLengthSq()) {
-        // Swap.
-        PodState temp = pods[0];
-        pods[0] = pods[1];
-        pods[1] = temp;
+    } else {
+        // Another bottleneck spot, so resorting to manual computation.
+        float diffX1 = race.checkpoints[pods[0].nextCheckpoint].x - pods[0].pos.x;
+        float diffY1 = race.checkpoints[pods[0].nextCheckpoint].y - pods[0].pos.y;
+        float diffX2 = race.checkpoints[pods[1].nextCheckpoint].x - pods[1].pos.x;
+        float diffY2 = race.checkpoints[pods[1].nextCheckpoint].y - pods[1].pos.y;
+        if(pods[1].passedCheckpoints > pods[0].passedCheckpoints ||
+                (diffX1*diffX1 + diffY1*diffY1) > (diffX2*diffX2 + diffY2*diffY2)) {
+            // Swap.
+            PodState temp = pods[0];
+            pods[0] = pods[1];
+            pods[1] = temp;
+        }
     }
 }
 
