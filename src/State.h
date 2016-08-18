@@ -6,6 +6,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <sstream>
 
 #include "Vector.h"
@@ -28,25 +29,17 @@ static const int OUR_PLAYER_ID = 0;
 static const int BOOST_ACC = 650;
 
 
-struct Checkpoint {
-    Vector pos;
-    int order;
-
-    Checkpoint(int x, int y, int order) :
-            pos(x, y), order(order) {}
-};
-
 struct Race {
     int laps;
-    vector<Checkpoint> checkpoints;
+    vector<Vector> checkpoints;
     float maxCheckpointDist = 0;
 
     Race() {}
 
-    Race(int laps, vector<Checkpoint> checkpoints) :
+    Race(int laps, vector<Vector> checkpoints) :
             laps(laps), checkpoints(checkpoints) {
         for(int i = 0; i < checkpoints.size()-1; i++) {
-            maxCheckpointDist = max(maxCheckpointDist, (checkpoints[i].pos - checkpoints[i+1].pos).getLength());
+            maxCheckpointDist = max(maxCheckpointDist, (checkpoints[i] - checkpoints[i+1]).getLength());
         }
     }
 
@@ -92,13 +85,20 @@ struct PodState {
 };
 
 struct PlayerState {
-    vector<PodState> pods;
-    vector<PodState> lastPods;
+    PodState pods[POD_COUNT];
+    PodState lastPods[POD_COUNT];
     int leadPodID = 0;
-    PlayerState( vector<PodState> pods) : pods(pods) {}
 
-    PlayerState(vector<PodState> pods, vector<PodState> lastPods)
-            : pods(pods), lastPods(lastPods) {}
+    PlayerState() {}
+
+    PlayerState(PodState inPods[]) {
+        memcpy(pods, inPods, POD_COUNT*sizeof(PodState));
+    }
+
+    PlayerState(PodState inPods[], PodState inLastPods[]) {
+        memcpy(pods, inPods, POD_COUNT*sizeof(PodState));
+        memcpy(lastPods, inLastPods, POD_COUNT*sizeof(PodState));
+    }
 
     PodState& leadPod() {
         return pods[leadPodID];
@@ -111,13 +111,15 @@ struct PlayerState {
 
 struct GameState {
     Race race;
-    vector<PlayerState> playerStates;
+    PlayerState playerStates[PLAYER_COUNT];
     int turn = 0;
 
     GameState() {};
 
-    GameState(Race& race, vector<PlayerState>& playerStates, int turn) :
-            race(race), playerStates(playerStates), turn(turn) {}
+    GameState(Race& race, PlayerState inPlayerStates[], int turn) :
+            race(race), turn(turn) {
+        memcpy(playerStates, inPlayerStates, PLAYER_COUNT*sizeof(PlayerState));
+    }
 
     PlayerState& ourState() {
         return playerStates[OUR_PLAYER_ID];
@@ -199,7 +201,7 @@ public:
 
     State() {}
     State(Race race) : race(race) {}
-    void preTurnUpdate(vector<PlayerState> input);
+    void preTurnUpdate(PlayerState input[]);
     void postTurnUpdate(PodOutputAbs pod1, PodOutputAbs pod2);
     GameState& game() {return current;}
 };

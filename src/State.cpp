@@ -19,11 +19,12 @@ PodOutputAbs PodOutputSim::absolute(const PodState& pod) {
     return po;
 }
 
-void State::preTurnUpdate(vector<PlayerState> playerStates) {
+void State::preTurnUpdate(PlayerState playerStates[]) {
     if(turn > 0) {
         for (int i = 0; i < PLAYER_COUNT; i++) {
             playerStates[i].leadPodID = previous.playerStates[i].leadPodID;
-            playerStates[i].lastPods = previous.playerStates[i].pods;
+            playerStates[i].lastPods[0] = previous.playerStates[i].pods[0];
+            playerStates[i].lastPods[1] = previous.playerStates[i].pods[1];
             vector<int> passed;
             for (int p = 0; p < POD_COUNT; p++) {
                 playerStates[i].pods[p].passedCheckpoints = previous.playerStates[i].pods[p].passedCheckpoints;
@@ -48,8 +49,8 @@ void State::preTurnUpdate(vector<PlayerState> playerStates) {
             if(passed[0] == passed[1]) {
                 PodState& p0 = playerStates[i].pods[0];
                 PodState& p1 = playerStates[i].pods[1];
-                Checkpoint& cp = race.checkpoints[p0.nextCheckpoint];
-                playerStates[i].leadPodID = (cp.pos - p0.pos).getLength() < (cp.pos - p1.pos).getLength() ? 0 : 1;
+                Vector& cp = race.checkpoints[p0.nextCheckpoint];
+                playerStates[i].leadPodID = (cp - p0.pos).getLength() < (cp - p1.pos).getLength() ? 0 : 1;
             } else {
                 playerStates[i].leadPodID = passed[0] > passed[1] ? 0 : 1;
             }

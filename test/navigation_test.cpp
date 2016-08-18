@@ -53,7 +53,7 @@ TEST(NavigationTest, turn_saturation_adjusted) {
 
 TEST(NavigationTest, turnsUntilReached) {
     // Need to specific at least 1 checkpoint or the physic's move method will have undefined behaviour.
-    Navigation nav(Race(1, {Checkpoint(0,0,0)}));
+    Navigation nav(Race(1, {Vector(0,0)}));
     Vector pos(200, 0);
     Vector vel(100, 0);
     float angle = 0;
@@ -66,7 +66,7 @@ TEST(NavigationTest, turnsUntilReached) {
 }
 
 TEST(NavigationTest, findIntecept) {
-    Navigation nav(Race(1, {Checkpoint(0,0,0)}));
+    Navigation nav(Race(1, {Vector(0,0)}));
     Vector pos(9335, 977);
     Vector vel(0, 0);
     float angle = M_PI * (145 / 180);

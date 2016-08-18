@@ -9,18 +9,18 @@ PodOutputAbs Racer::move(GameState& gameState, int podID) {
     Navigation nav(gameState.race);
     Physics physics(gameState.race);
     PodState& pod = gameState.ourState().pods[podID];
-    Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
+    Vector ck = gameState.race.checkpoints[pod.nextCheckpoint];
     PodOutputAbs move;
     if(pod.passedCheckpoints == gameState.race.laps * gameState.race.checkpoints.size() - 1) {
         // Last checkpoint, no need to line-up the following checkpoint.
 //        cerr << "Last Checkpoint!" << endl;
-        move = nav.turnSaturationAdjust(pod, nav.seek(pod, ck.pos));
+        move = nav.turnSaturationAdjust(pod, nav.seek(pod, ck));
     } else {
         move = nav.preemptSeek(pod);
     }
     float velThreshold = 190;
     if(gameState.turn > 0) {
-        for (int i = 0; i < gameState.enemyState().pods.size(); i++) {
+        for (int i = 0; i < POD_COUNT; i++) {
             const PodState& enemyPod = gameState.enemyState().pods[i];
             const PodState& previousEnemyPod = gameState.enemyState().lastPods[i];
             if (pod.turnsSinceShield >= SHIELD_COOLDOWN && physics.isCollision(pod, move, enemyPod,
@@ -46,8 +46,8 @@ PodOutputAbs Racer::move(GameState& gameState, int podID) {
         float boostAngleLimit = M_PI * (4.0 / 180.0);
         float minimumDistFactor = 0.8;
         float distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
-        if(abs(physics.angleTo(pod.pos, ck.pos) - pod.angle) < boostAngleLimit &&
-           (ck.pos - pod.pos).getLength() >= distThreshold) {
+        if(abs(physics.angleTo(pod.pos, ck) - pod.angle) < boostAngleLimit &&
+           (ck - pod.pos).getLength() >= distThreshold) {
             move.thrust = PodOutputAbs::BOOST;
             pod.boostAvailable = false;
         }
@@ -68,27 +68,27 @@ PodOutputAbs Bouncer::move(GameState& gameState, int podID) {
         int leadID = gameState.enemyState().leadPodID;
         // Need a tidier way of finding the nextNextCP.
         int nextNextCP = (leadPod.nextCheckpoint + 1) % gameState.race.checkpoints.size();
-        if(gameState.turn > 0 && target == gameState.race.checkpoints[nextNextCP].pos) {
+        if(gameState.turn > 0 && target == gameState.race.checkpoints[nextNextCP]) {
 //            cerr << "Targeting next next CP: " << nextNextCP << endl;
             // Move towards target and spin towards enemy.
             PodState nextPos = physics.move(leadPod, physics.expectedControl(gameState.enemyState().lastPods[leadID], leadPod), 1);
             int turnThreshold = 8;
             int seekThreshold = 0;
-            move =  nav.preemptSeek(pod, gameState.race.checkpoints[nextNextCP].pos, CHECKPOINT_RADIUS*3, nextPos.pos,
+            move =  nav.preemptSeek(pod, gameState.race.checkpoints[nextNextCP], CHECKPOINT_RADIUS*3, nextPos.pos,
                                     turnThreshold, seekThreshold);
         } else {
 //            cerr << "Intercepting pod: " << leadID << endl;
             move = nav.intercept(pod, gameState.enemyState().leadPod());
         }
     } else {
-        move = nav.turnSaturationAdjust(pod, nav.seek(pod, gameState.race.checkpoints[pod.nextCheckpoint].pos));
+        move = nav.turnSaturationAdjust(pod, nav.seek(pod, gameState.race.checkpoints[pod.nextCheckpoint]));
         if(pod.boostAvailable && move.thrust != PodOutputAbs::SHIELD) {
             float boostAngleLimit = M_PI * (5.0 / 180.0);
             float minimumDistFactor = 0.7;
-            Checkpoint ck = gameState.race.checkpoints[pod.nextCheckpoint];
+            Vector ck = gameState.race.checkpoints[pod.nextCheckpoint];
             float distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
-            if(abs(physics.angleTo(pod.pos, ck.pos) - pod.angle) < boostAngleLimit &&
-               (ck.pos - pod.pos).getLength() >= distThreshold) {
+            if(abs(physics.angleTo(pod.pos, ck) - pod.angle) < boostAngleLimit &&
+               (ck - pod.pos).getLength() >= distThreshold) {
                 move.thrust = PodOutputAbs::BOOST;
                 pod.boostAvailable = false;
             }
@@ -96,7 +96,7 @@ PodOutputAbs Bouncer::move(GameState& gameState, int podID) {
     }
     if(gameState.turn > 0) {
         float velThreshold = 150;
-        for (int i = 0; i < gameState.enemyState().pods.size(); i++) {
+        for (int i = 0; i < POD_COUNT; i++) {
             const PodState& enemyPod = gameState.enemyState().pods[i];
             const PodState& previousEnemyPod = gameState.enemyState().lastPods[i];
             if (pod.turnsSinceShield >= SHIELD_COOLDOWN && physics.isCollision(pod, move, enemyPod, physics.expectedControl(previousEnemyPod, enemyPod), velThreshold)) {

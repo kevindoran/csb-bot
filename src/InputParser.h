@@ -9,7 +9,7 @@ class InputParser {
 public:
     InputParser(istream& stream) : stream(stream) {};
     Race init();
-    vector<PlayerState> parseTurn();
+    void parseTurn(PlayerState playerStates[]);
 };
 
 #endif //CODERSSTRIKEBACK_INPUTPARSER_H

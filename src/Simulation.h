@@ -54,44 +54,44 @@ class Simulation {
     Physics physics;
 
     // Place pods along a line at checkpoint 0 facing checkpoint 1.
-    void initializePods(vector<PodState>& aPods, vector<PodState>& bPods) {
-        Vector facingDirection = race.checkpoints[1].pos - race.checkpoints[0].pos;
+    void initializePods(PodState aPods[], PodState bPods[]) {
+        Vector facingDirection = race.checkpoints[1] - race.checkpoints[0];
         Vector startLine = facingDirection.tanget().normalize();
         float gap = POD_RADIUS + 100;
-        Vector posA1 = race.checkpoints[0].pos + startLine * gap;
-        Vector posA2 = race.checkpoints[0].pos - startLine * gap;
-        Vector posB1 = race.checkpoints[0].pos +  startLine * 3 * gap;
-        Vector posB2 = race.checkpoints[0].pos - startLine * 3 * gap;
-        float angle = Physics::angleTo(posA1, race.checkpoints[1].pos);
+        Vector posA1 = race.checkpoints[0] + startLine * gap;
+        Vector posA2 = race.checkpoints[0] - startLine * gap;
+        Vector posB1 = race.checkpoints[0] +  startLine * 3 * gap;
+        Vector posB2 = race.checkpoints[0] - startLine * 3 * gap;
+        float angle = Physics::angleTo(posA1, race.checkpoints[1]);
         aPods[0] = PodState(posA1, Vector(0,0), angle, 1);
-        angle = Physics::angleTo(posA2, race.checkpoints[1].pos);
+        angle = Physics::angleTo(posA2, race.checkpoints[1]);
         aPods[1] = PodState(posA2, Vector(0,0), angle, 1);
-        angle = Physics::angleTo(posB1, race.checkpoints[1].pos);
+        angle = Physics::angleTo(posB1, race.checkpoints[1]);
         bPods[0] = PodState(posB1, Vector(0,0), angle, 1);
-        angle = Physics::angleTo(posB2, race.checkpoints[1].pos);
+        angle = Physics::angleTo(posB2, race.checkpoints[1]);
         bPods[1] = PodState(posB2, Vector(0,0), angle, 1);
     }
 
-    bool victory(const vector<PodState>& ourPods, const vector<PodState>& enemyPods) {
+    bool victory(PodState ourPods[], PodState enemyPods[]) {
         bool finished = ourPods[0].passedCheckpoints == race.totalCPCount() || ourPods[1].passedCheckpoints == race.totalCPCount();
         bool otherPlayerTimeout = enemyPods[0].turnsSinceCP > 100 && enemyPods[1].turnsSinceCP > 100;
         return finished || otherPlayerTimeout;
     }
 
 
-    vector<PlayerState> stripAndCombine(const vector<PodState>& ourStates, const vector<PodState>& enemyStates) {
-        vector<PlayerState> out;
-        PlayerState us({strip(ourStates[0]), strip(ourStates[1])});
-        PlayerState enemy({strip(enemyStates[0]), strip(enemyStates[1])});
-        out.push_back(us);
-        out.push_back(enemy);
-        return out;
+    void stripAndCombine(PodState ourStates[], PodState enemyStates[], PlayerState out[]) {
+        PodState ourPods[] = {strip(ourStates[0]), strip(ourStates[1])};
+        PlayerState us(ourPods);
+        PodState enemyPods[] = {strip(enemyStates[0]), strip(enemyStates[1])};
+        PlayerState enemy(enemyPods);
+        out[0] = us;
+        out[1] = enemy;
     }
 
     // Create a pod state as if it was parsed form the game input.
     PodState strip(const PodState& podState) {
         PodState basic;
-        basic.pos = podState.pos;
+        basic = podState;
         basic.vel = podState.vel;
         basic.nextCheckpoint = podState.nextCheckpoint;
         basic.angle = podState.angle;
@@ -103,17 +103,13 @@ public:
     Simulation(Race r) : race(r), physics(r) {}
 
     GameHistory simulate(DuelBot* a, DuelBot* b) {
-        vector<PodState> aPods = {PodState(), PodState()};
-        vector<PodState> bPods = {PodState(), PodState()};
+        PodState aPods[POD_COUNT];
+        PodState bPods[POD_COUNT];
         initializePods(aPods, bPods);
         GameHistory history;
         a->init(race);
         b->init(race);
-        vector < PodState * > pods;
-        pods.push_back(&aPods[0]);
-        pods.push_back(&aPods[1]);
-        pods.push_back(&bPods[0]);
-        pods.push_back(&bPods[1]);
+        PodState* pods[] = {&aPods[0], &aPods[1], &bPods[0], &bPods[1]};
         State stateA(race);
         State stateB(race);
         for(int i = 0; i < TURN_LIMIT; i++) {
@@ -124,8 +120,12 @@ public:
                 cout << "Victory on turn: " << i << endl;
                 return history;
             }
-            stateA.preTurnUpdate(stripAndCombine(aPods, bPods));
-            stateB.preTurnUpdate(stripAndCombine(bPods, aPods));
+            PlayerState forA[PLAYER_COUNT];
+            PlayerState forB[PLAYER_COUNT];
+            stripAndCombine(aPods, bPods, forA);
+            stripAndCombine(bPods, aPods, forB);
+            stateA.preTurnUpdate(forA);
+            stateB.preTurnUpdate(forB);
             PairOutput aOut = a->move(stateA.game());
             PairOutput bOut = b->move(stateB.game());
             stateA.postTurnUpdate( aOut.o1.absolute(stateA.game().ourState().pods[0]),

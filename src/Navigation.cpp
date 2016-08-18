@@ -89,8 +89,8 @@ PodOutputAbs Navigation::preemptSeek(const PodState &pod, Vector initialTarget, 
 }
 
 PodOutputAbs Navigation::preemptSeek(const PodState &pod) {
-    Checkpoint nextCP = race.checkpoints[(pod.nextCheckpoint + 1) % race.checkpoints.size()];
-    return preemptSeek(pod, race.checkpoints[pod.nextCheckpoint].pos, CHECKPOINT_RADIUS, nextCP.pos);
+    Vector nextCP = race.checkpoints[(pod.nextCheckpoint + 1) % race.checkpoints.size()];
+    return preemptSeek(pod, race.checkpoints[pod.nextCheckpoint], CHECKPOINT_RADIUS, nextCP);
 }
 
 PodOutputAbs Navigation::intercept(const PodState &pod, const PodState &enemy) {
@@ -105,7 +105,7 @@ float Navigation::geometric_sum(float a, float r, int r1, int r2) {
 // Binary search along the path between the enemy and its next checkpoint- search for a point where our bot
 // and the enemy bot will arrive at the same time.
 Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
-    Vector intercept_path = race.checkpoints[enemy.nextCheckpoint].pos - enemy.pos;
+    Vector intercept_path = race.checkpoints[enemy.nextCheckpoint] - enemy.pos;
     // TODO: hardcoded heuristic- convert to parameter and search for optimum.
     // The distance between two points on the path below which is acceptable to be considered the same 'area' or
     // place where the bots are likely to collide.
@@ -138,7 +138,7 @@ Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
         // If there doesn't seem to be a place where the two bots will arrive at the same time, target the enemy bot's
         // next next checkpoint in preparation.
         int enemyNextNextCP = (enemy.nextCheckpoint + 1) % race.checkpoints.size();
-        return race.checkpoints[enemyNextNextCP].pos;
+        return race.checkpoints[enemyNextNextCP];
     }
 }
 

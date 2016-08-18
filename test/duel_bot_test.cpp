@@ -31,7 +31,8 @@ protected:
         istringstream stream(inputStr);
         InputParser ip(stream);
         r = ip.init();
-        playerStates = ip.parseTurn();
+        PlayerState playerStates[PLAYER_COUNT];
+        ip.parseTurn(playerStates);
         gs = GameState(r, playerStates, 0);
     }
 };

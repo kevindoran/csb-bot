@@ -5,6 +5,25 @@
 #include <iostream>
 
 class Vector {
+    static float cosFast(float x) noexcept {
+        constexpr float tp = 1.0/(2.0*M_PI);
+        x *= tp;
+        x -= 0.25 + std::floor(x + 0.25);
+        x *= 16.0 * (std::abs(x) - 0.5);
+        x += 0.225 * x * (std::abs(x) - 1.0);
+        return x;
+    }
+
+    static float sinFast(float x) noexcept {
+        const float B = 4.0/M_PI;
+        const float C = -4.0/(M_PI*M_PI);
+        const float Q = 0.775;
+        const float P = 0.225;
+
+        float y = B * x + C * x * std::abs(x);
+        y = P * (y * std::abs(y) - y) + y +  Q * y + P * y * std::abs(y);
+    }
+
 public:
     static const int UN_SET = -1;
     mutable float length = UN_SET;
@@ -23,7 +42,7 @@ public:
 
     ~Vector() {};
 
-    static Vector fromMagAngle(float magnitude, float angle) {
+    static Vector fromMagAngle(const float magnitude, const float angle) {
         return Vector(magnitude * std::cos(angle), magnitude * std::sin(angle));
     }
 

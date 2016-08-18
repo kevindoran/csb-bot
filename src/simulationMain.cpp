@@ -5,7 +5,7 @@
 #include "AnnealingBot.h"
 #include "PodracerBot.h"
 
-Race r1(3, {Checkpoint(10000, 3400, 0), Checkpoint(11200, 5400, 1), Checkpoint(7200, 6700, 2), Checkpoint(5400, 2700, 3)});
+Race r1(3, {Vector(10000, 3400), Vector(11200, 5400), Vector(7200, 6700), Vector(5400, 2700)});
 
 int main(int argc, char* argv[]) {
     ostream* out;
@@ -20,5 +20,7 @@ int main(int argc, char* argv[]) {
     DuelBot* b2 = new TraditionalBot();
     Simulation sim(r1);
     GameHistory gh = sim.simulate(b1, b2);
+    *out << "gameData = ";
     gh.writeToStream(*out);
+    *out << ";";
 }

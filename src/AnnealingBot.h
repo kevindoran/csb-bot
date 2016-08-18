@@ -11,16 +11,16 @@
 
 
 class CustomAI : public SimBot {
-    vector<PairOutput> moves;
+    const PairOutput* moves;
     Race* race;
     int turn = 0;
 public:
-    CustomAI(vector<PairOutput> moves) : moves(moves) {}
+    CustomAI(const PairOutput moves[]) : moves(moves) {}
 
     void init(Race& r) {
         race = &r;
     }
-    void move(vector<PodState> &ourPods, vector<PodState> &enemyPods) {
+    void move(PodState ourPods[], PodState enemyPods[]) {
         Physics::apply(ourPods, moves[turn++]);
     }
 };
@@ -48,58 +48,61 @@ public:
     /**
      * ourPods and enemyPods must be orderd by progress; it is assumed that ourPods[0] is our lead pod.
      */
-    void move(vector<PodState> &ourPods, vector<PodState> &enemyPods) {
-        Vector target = race.checkpoints[ourPods[0].nextCheckpoint].pos - ourPods[0].vel * 4;
-//        float cut_off = M_PI / 2 + MAX_ANGLE;
-//        float angle_threshold = M_PI * (20.0f / 180.0f);
+    void move(PodState* ourPods, PodState* enemyPods) {
+        // Racer
+        Vector target = race.checkpoints[ourPods[0].nextCheckpoint] - ourPods[0].vel * 4;
         float turn_angle = physics.turnAngle(ourPods[0], target);
-//        float thrust;
-//        float clippedAngle;
-//        if(abs(turn_angle) > cut_off) {
-//            thrust = 0;
-//        } else if(abs(turn_angle) > angle_threshold) {
-//            float spread = 0.3;
-//            float x = abs(spread * (turn_angle - angle_threshold) / (cut_off - angle_threshold));
-//            float factor =  1 - sqrt(1 - exp(-(2 / M_PI) * x * x));
-//            thrust *= factor;
-//        }
-        float clippedAngle = turn_angle < 0 ? max(-MAX_ANGLE, turn_angle) : max(MAX_ANGLE, turn_angle);
-        Vector force = Vector::fromMagAngle(MAX_THRUST, clippedAngle);
+        Vector force;
+        if(abs(turn_angle) > MAX_ANGLE) {
+            turn_angle = turn_angle < 0 ? max(-MAX_ANGLE, turn_angle) : min(MAX_ANGLE, turn_angle);
+            force = Vector::fromMagAngle(MAX_THRUST, turn_angle);
+        } else {
+            force = target.normalize() * MAX_THRUST;
+        }
         ourPods[0].vel.x += force.x;
         ourPods[0].vel.y += force.y;
-        ourPods[0].angle += clippedAngle;
-//        PodOutputAbs output = nav.turnSaturationAdjust(ourPods[0], PodOutputAbs(MAX_THRUST, target));
+        ourPods[0].angle += turn_angle;
 
-        float targetx =  enemyPods[0].pos.x + (race.checkpoints[enemyPods[0].nextCheckpoint].pos.x - enemyPods[0].pos.x) * 0.80;
-        float targety =  enemyPods[0].pos.y + (race.checkpoints[enemyPods[0].nextCheckpoint].pos.y - enemyPods[0].pos.y) * 0.80;
+        // Bouncer
+        float targetx =  enemyPods[0].pos.x + (race.checkpoints[enemyPods[0].nextCheckpoint].x - enemyPods[0].pos.x) * 0.80;
+        float targety =  enemyPods[0].pos.y + (race.checkpoints[enemyPods[0].nextCheckpoint].y - enemyPods[0].pos.y) * 0.80;
         target = Vector(targetx, targety);
         turn_angle = physics.turnAngle(ourPods[1],target);
-        clippedAngle = turn_angle < 0 ? max(-MAX_ANGLE, turn_angle) : max(MAX_ANGLE, turn_angle);
-        force = Vector::fromMagAngle(MAX_THRUST, clippedAngle);
+        if(abs(turn_angle) > MAX_ANGLE) {
+            turn_angle = turn_angle < 0 ? max(-MAX_ANGLE, turn_angle) : min(MAX_ANGLE, turn_angle);
+            force = Vector::fromMagAngle(MAX_THRUST, turn_angle);
+        } else {
+            force = target.normalize() * MAX_THRUST;
+        }
         ourPods[1].vel.x += force.x;
         ourPods[1].vel.y += force.y;
-        ourPods[1].angle += clippedAngle;
+        ourPods[1].angle += turn_angle;
     };
 };
 
 class AnnealingBot : public DuelBot {
     Race race;
     Physics physics;
-    static const int turns = 5;
+    static const int turns = 6;
     static constexpr float maxScore = numeric_limits<float>::infinity();
     static constexpr float minScore = -numeric_limits<float>::infinity();
+    MinimalBot enemyBot;
+    PairOutput previousSolution[turns];
+    bool hasPrevious = false;
 
-    vector<PairOutput> randomSolution();
+    void train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]);
 
-    vector<PairOutput> train(const vector<PodState> &podsToTrain, const vector<PodState> &opponentPods);
+    float score(const PodState pods[], const PodState enemyPods[]);
 
-    void simulate(vector<PodState> &pods1, SimBot *pods1Sim, vector<PodState> &pods2, SimBot *pods2Sim, int turns);
+    float score(const PodState pods[], const PairOutput solution[], const PodState enemyPods[]);
 
-    float score(vector<PodState> &pods, vector<PodState> &enemyPods);
+    void simulate(PodState pods1[], SimBot *pods1Sim, PodState pods2[], SimBot *pods2Sim, int turns);
 
-    float score(vector<PodState> pods, vector<PairOutput> solution, vector<PodState> enemyPods);
+    void randomSolution(PairOutput sol[]);
 
     PairOutput random();
+
+    void randomEdit(PairOutput &po);
 
 public:
     AnnealingBot() {}
@@ -111,13 +114,21 @@ public:
     void init(Race& r) {
         race = r;
         physics = Physics(race);
+        enemyBot = MinimalBot(race);
     }
 
     PairOutput move(GameState& gameState) {
-        const vector<PodState> &ourPods = gameState.ourState().pods;
-        const vector<PodState> &enemyPods = gameState.enemyState().pods;
-        vector<PairOutput> solution = train(ourPods, enemyPods);
-        return solution[0];
+        PodState* ourPods = gameState.ourState().pods;
+        PodState* enemyPods = gameState.enemyState().pods;
+        PairOutput solution[turns];
+        train(ourPods, enemyPods, solution);
+        PairOutput sol = solution[0];
+        if(gameState.ourState().leadPodID != 0) {
+            PodOutputSim temp = sol.o1;
+            sol.o1 = sol.o2;
+            sol.o2 = temp;
+        }
+        return sol;
     };
 };
 

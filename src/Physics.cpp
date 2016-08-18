@@ -34,7 +34,7 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
     }
 }
 
-void Physics::applyWithoutChecks(PodState& pod, PodOutputSim& control) {
+void Physics::applyWithoutChecks(PodState& pod, const PodOutputSim& control) {
     pod.angle += control.angle;
     if(control.shieldEnabled) {
         pod.shieldEnabled = true;
@@ -43,56 +43,66 @@ void Physics::applyWithoutChecks(PodState& pod, PodOutputSim& control) {
     }
 }
 
-void Physics::apply(vector<PodState>& pods, PairOutput& control) {
+void Physics::apply(PodState pods[], PairOutput control) {
     apply(pods[0], control.o1);
     apply(pods[1], control.o2);
 }
 
-void Physics::apply(PodState& pod, PodOutputAbs& control) {
+void Physics::apply(PodState& pod, const PodOutputAbs& control) {
     Vector force = Physics::forceFromTarget(pod, control.target, control.thrust);
     float turn = Physics::turnAngle(pod, force);
     PodOutputSim po = PodOutputSim::fromAbsolute(pod, control);
     apply(pod, po);
 }
 
-PassedCheckpoint PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race) {
-    float time = Physics::passedCircleAt(a.pos, a.pos + a.vel, race.checkpoints[a.nextCheckpoint].pos, CHECKPOINT_RADIUS);
-    if(time == -1) return invalid();
-    else return PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
-}
-
-void PassedCheckpoint::resolve() {
-    if(occurred()) {
-        mPod->nextCheckpoint = mNextCheckpoint;
-        mPod->passedCheckpoints++;
-        mPod->turnsSinceCP = 0;
+bool PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race, PassedCheckpoint* event) {
+    float time = Physics::passedCircleAt(a.pos.x, a.pos.y, a.pos.x + a.vel.x, a.pos.y + a.vel.y,
+                 race.checkpoints[a.nextCheckpoint].x, race.checkpoints[a.nextCheckpoint].y, CHECKPOINT_RADIUS);
+    if(time == -1) return false;
+    else {
+        *event = PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
     }
 }
 
-void Physics::simulate(vector<PodState*> pods) {
+void PassedCheckpoint::resolve() {
+    mPod->nextCheckpoint = mNextCheckpoint;
+    mPod->passedCheckpoints++;
+    mPod->turnsSinceCP = 0;
+}
+
+void Physics::simulate(PodState* pods[POD_COUNT*2]) {
     // Update counters.
-    for(PodState* p : pods) {
-        p->turnsSinceCP++;
-        p->turnsSinceShield++;
+    for(int i = 0; i < POD_COUNT*2; i++) {
+        pods[i]->turnsSinceCP++;
+        pods[i]->turnsSinceShield++;
     }
     float time = 0;
     vector<PassedCheckpoint> pCPEvents;
     Collision earliest;
+//    int earliestIdx[2];
     bool started = false;
     bool hasCollision = false;
+    bool occurred = false;
+    Collision collision;
+    PassedCheckpoint cpEvent;
+//    int skip[2] = {-1, -1};
     while(time < 1) {
-        for (int i = 0; i < pods.size() - 1; i++) {
+        for (int i = 0; i < POD_COUNT*2 - 1; i++) {
             // Collision or checkpoint passing first?
-            for (int j = i + 1; j < pods.size(); j++) {
-                Collision collision = Collision::testForCollision(*pods[i], *pods[j]);
-                if (collision.occurred() && collision.time() + time < 1.0 && (!hasCollision || earliest.time() > collision.time())) {
+            for (int j = i + 1; j < POD_COUNT*2; j++) {
+                // These two had the previous collision.
+//                if(skip[1] == i && skip[2] == j) continue;
+                occurred = Collision::testForCollision(*pods[i], *pods[j], &collision);
+                if (occurred && collision.time() + time < 1.0 && (!hasCollision || earliest.time() > collision.time())) {
                     hasCollision = true;
                     earliest = collision;
+//                    earliestIdx[0] = i;
+//                    earliestIdx[1] = j;
                 }
             }
             // Can optimize by keeping list of pc events and resolving all those before the earliest collision.
-            PassedCheckpoint cpEvent = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race);
-            if (cpEvent.occurred()) {
+            occurred = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race, &cpEvent);
+            if (occurred) {
                 pCPEvents.push_back(cpEvent);
             }
         }
@@ -103,29 +113,31 @@ void Physics::simulate(vector<PodState*> pods) {
         }
         float moveTime = hasCollision ? earliest.time() : 1.0 - time;
 
-        for(auto& pod : pods) {
-            pod->pos.x += pod->vel.x * moveTime;
-            pod->pos.y += pod->vel.y * moveTime;
+        for(int i = 0; i < POD_COUNT*2; i++) {
+            pods[i]->pos.x += pods[i]->vel.x * moveTime;
+            pods[i]->pos.y += pods[i]->vel.y * moveTime;
         }
         if (hasCollision) {
             earliest.resolve();
             hasCollision = false;
+//            skip[0] = earliestIdx[0];
+//            skip[1] = earliestIdx[1];
         }
         time += moveTime;
     }
 
     // Drag and rounding.
-    for(auto& pod : pods) {
-        pod->vel.x = pod->vel.x * DRAG;
-        pod->vel.y = pod->vel.y * DRAG;
-        pod->vel.x = (int) pod->vel.x;
-        pod->vel.y = (int) pod->vel.y;
-        pod->pos.x = (int) pod->pos.x;
-        pod->pos.y = (int) pod->pos.y;
+    for(int i = 0; i < POD_COUNT*2; i++) {
+        pods[i]->vel.x = pods[i]->vel.x * DRAG;
+        pods[i]->vel.y = pods[i]->vel.y * DRAG;
+        pods[i]->vel.x = (int) pods[i]->vel.x;
+        pods[i]->vel.y = (int) pods[i]->vel.y;
+        pods[i]->pos.x = (int) pods[i]->pos.x;
+        pods[i]->pos.y = (int) pods[i]->pos.y;
     }
 }
 
-Collision Collision::testForCollision(PodState& a, PodState& b) {
+bool Collision::testForCollision(PodState& a, PodState& b, Collision* collision) {
     // Change reference frame to a. a pos = (0, 0)
 //    Vector pathStart = b.pos - a.pos;
 //    Vector vel = b.vel - a.vel;
@@ -136,14 +148,14 @@ Collision Collision::testForCollision(PodState& a, PodState& b) {
     float velY = b.vel.y - a.vel.y;
     // If the bots have the same speed.
     if(velX == 0 && velY == 0) {
-        return invalidCollision();
+        return false;
     }
     float pathEndX = pathStartX + velX;
     float pathEndY = pathStartY + velY;
 
-    Vector closestPoint = Physics::closestPointOnLine(pathStartX, pathStartY, pathEndX, pathEndY, Vector(0,0));
+    Vector closestPoint = Physics::closestPointOnLine(pathStartX, pathStartY, pathEndX, pathEndY, 0, 0);
     if(closestPoint.getLengthSq() > (2*POD_RADIUS)*(2*POD_RADIUS)) {
-        return invalidCollision();
+        return false;
     } else {
 //        if((closestPoint.x == pathStartX && closestPoint.y == pathStartY) || (closestPoint.x == pathEndX && closestPoint.y == pathEndY)) {
             //cerr << "Warning, probably a faulty collision." << endl;
@@ -161,13 +173,13 @@ Collision Collision::testForCollision(PodState& a, PodState& b) {
 //        float travelDist = sqrt(travelX*travelX + travelY * travelY);
         float travelDist = parallelDist - backDist;
         float time = travelDist / velLength;
-        if(time < 0.00001) return invalidCollision();
+        if(time < 0.00001) return false;
 //        Vector collisionPoint = a.vel * time + bCenter * 0.5;
         // Reset to normal reference frame.
         // Turns out that the actual collision point is not important, as the bots move to it before resolving the
         // collision.
 //        collisionPoint = collisionPoint + a.pos;
-        return Collision(a, b, time);
+        *collision = Collision(a, b, time);
     }
 }
 
@@ -240,19 +252,19 @@ PodState Physics::move(const PodState& pod, const PodOutputAbs& control, float t
 }
 
 
-bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Checkpoint& checkpoint) {
-    return passedPoint(beforePos, afterPos, checkpoint.pos, CHECKPOINT_RADIUS);
+bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Vector& checkpoint) {
+    return passedPoint(beforePos, afterPos, checkpoint, CHECKPOINT_RADIUS);
 }
 bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const Vector& target, float radius) {
-    float time = passedCircleAt(beforePos, afterPos, target, radius);
+    float time = passedCircleAt(beforePos.x, beforePos.y, afterPos.x, afterPos.y, target.x, target.y, radius);
     return time != -1;
 }
 
-float Physics::passedCircleAt(const Vector &beforePos, const Vector &afterPos, const Vector &target, float radius) {
-    float Dx = afterPos.x -beforePos.x;
-    float Dy = afterPos.y -beforePos.y;
-    float Fx = beforePos.x - target.x;
-    float Fy = beforePos.y - target.y;
+float Physics::passedCircleAt(float beforePosX, float beforePosY, float afterPosX, float afterPosY, float targetX, float targetY, float radius) {
+    float Dx = afterPosX -beforePosX;
+    float Dy = afterPosY -beforePosY;
+    float Fx = beforePosX - targetX;
+    float Fy = beforePosY - targetY;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
     long a = Dx*Dx + Dy*Dy;
     long b = 2 * (Fx*Dx + Fy*Dy);
@@ -269,18 +281,18 @@ float Physics::passedCircleAt(const Vector &beforePos, const Vector &afterPos, c
 }
 
 Vector Physics::closestPointOnLine(Vector lineStart, Vector lineEnd, Vector point) {
-    return closestPointOnLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, point);
+    return closestPointOnLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, point.x, point.y);
 }
-Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lineEndX, float lineEndY, Vector point) {
+Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lineEndX, float lineEndY, float pointX, float pointY) {
     // Test if the closest point is one of the line segment end points.
     float pathX = lineEndX - lineStartX;
     float pathY = lineEndY - lineStartY;
     // While this next bit works for line segments, we need to calculate the collision point, which
     // needs to treat this method as closest point on
-    if((pathX * (point.x - lineEndX) + pathY * (point.y - lineEndY)) > 0) {
+    if((pathX * (pointX - lineEndX) + pathY * (pointY - lineEndY)) > 0) {
         // Closest point is on the further side of lineEnd.
         return Vector(lineEndX, lineEndY);
-    } else if((pathX * (lineStartX - point.x) + pathY * (lineStartY - point.y)) > 0) {
+    } else if((pathX * (lineStartX - pointX) + pathY * (lineStartY - pointY)) > 0) {
         // Closest point is on the further side of lineStart.
         return Vector(lineStartX, lineStartY);
     }
@@ -290,12 +302,12 @@ Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lin
     float A = lineEndY - lineStartY;
     float B = lineStartX - lineEndX;
     float C1 = A * lineStartX + B * lineStartY;
-    float C2 = -B * point.x + A * point.y;
+    float C2 = -B * pointX + A * pointY;
     // Solve simultaneous equations for intersection.
     float det  = A*A - -B*B;
     if(det == 0) {
         // Point is on the line, and thus, is the closest point.
-        return point;
+        return Vector(pointX, pointY);
     } else {
         // By Cramer's Rule:
         float px = (A*C1 - B * C2) / det;
@@ -351,24 +363,42 @@ PodState Physics::extrapolate(const PodState& pod, const PodOutputAbs& control, 
     return p;
 }
 
-void Physics::orderByProgress(vector<PodState>& pods) {
+void Physics::orderByProgress(vector<PodState> pods) {
     if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
         // Already in order.
         return;
     } else if(pods[1].passedCheckpoints > pods[0].passedCheckpoints
-              || (race.checkpoints[pods[0].nextCheckpoint].pos - pods[0].pos).getLengthSq()
-                 > (race.checkpoints[pods[1].nextCheckpoint].pos - pods[1].pos).getLengthSq()) {
+              || (race.checkpoints[pods[0].nextCheckpoint] - pods[0].pos).getLengthSq()
+                 > (race.checkpoints[pods[1].nextCheckpoint] - pods[1].pos).getLengthSq()) {
         // Swap.
-        PodState& temp = pods[0];
+        PodState temp = pods[0];
+        pods[0] = pods[1];
+        pods[1] = temp;
+    }
+}
+
+void Physics::orderByProgress(PodState pods[]) {
+    if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
+        // Already in order.
+        return;
+    } else if(pods[1].passedCheckpoints > pods[0].passedCheckpoints
+              || (race.checkpoints[pods[0].nextCheckpoint] - pods[0].pos).getLengthSq()
+                 > (race.checkpoints[pods[1].nextCheckpoint] - pods[1].pos).getLengthSq()) {
+        // Swap.
+        PodState temp = pods[0];
         pods[0] = pods[1];
         pods[1] = temp;
     }
 }
 
 float Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
-    Vector diff = toPoint - fromPoint;
-    float angle = acos(diff.x / diff.getLength());
-    if(diff.y < 0) {
+    // This method is a bottleneck, so using Vector is avoided.
+    // Vector diff = toPoint - fromPoint;
+    float diffX = toPoint.x - fromPoint.x;
+    float diffY = toPoint.y - fromPoint.y;
+    float length = sqrt(diffX*diffX + diffY*diffY);
+    float angle = acos(diffX / length);
+    if(diffY < 0) {
         angle = 2 * M_PI - angle;
     }
     return angle;

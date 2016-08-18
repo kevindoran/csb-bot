@@ -33,9 +33,9 @@ protected:
 
 public:
     PhysicsTest() : Test() {
-        Checkpoint cp1(1000, 1000, 0);
-        Checkpoint cp2(2000, 3000, 1);
-        vector<Checkpoint> v{cp1, cp2};
+        Vector cp1(1000, 1000);
+        Vector cp2(2000, 3000);
+        vector<Vector> v{cp1, cp2};
         int laps = 2;
         race = new Race(laps, v);
         physics = new Physics(*race);
@@ -150,8 +150,7 @@ TEST_F(PhysicsTest, isCollision) {
 TEST_F(PhysicsTest, simulate_single) {
     // Single pod.
     podState->vel = Vector(100, 0);
-    vector<PodState*> pods;
-    pods.push_back(podState);
+    PodState* pods[] = {podState};
     physics->simulate(pods);
     EXPECT_EQ(Vector(85,0), podState->vel);
     EXPECT_EQ(Vector(3100, 0), podState->pos);
@@ -191,9 +190,7 @@ TEST(PhysicsTest2, closest_point_on_line) {
 TEST_F(PhysicsTest, simulate_collision) {
     PodState a(Vector(0,0), Vector(200,0), 0);
     PodState b(Vector(1200, 0), Vector(-200, 0), 0);
-    vector<PodState*> pods;
-    pods.push_back(&a);
-    pods.push_back(&b);
+    PodState* pods[] = {&a, &b};
     physics->simulate(pods);
     EXPECT_EQ(Vector(200,0), a.pos);
     EXPECT_EQ(Vector(1000,0), b.pos);

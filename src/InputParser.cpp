@@ -11,28 +11,26 @@ using namespace std;
 Race InputParser::init() {
     int laps, checkpointCount;
     stream >> laps >> checkpointCount;
-    vector<Checkpoint> checkpoints;
+    vector<Vector> checkpoints;
     for(int i = 0; i < checkpointCount; i++) {
         int x, y;
         stream >> x >> y;
-        checkpoints.push_back(Checkpoint(x, y, i));
+        checkpoints.push_back(Vector(x, y));
     }
     return Race(laps, checkpoints);
 }
 
-vector<PlayerState> InputParser::parseTurn() {
-    vector<PlayerState> playerStates;
+void InputParser::parseTurn(PlayerState playerStates[]) {
     for (int i = 0; i < PLAYER_COUNT; i++) {
-        vector<PodState> podStates;
+        PodState podStates[POD_COUNT];
         for (int p = 0; p < POD_COUNT; p++) {
             int x, y, vx, vy, angle, nextCheckpoint;
             stream >> x >> y >> vx >> vy >> angle >> nextCheckpoint;
             float angleRad = M_PI * (angle / 180.0);
             PodState pod(x, y, vx, vy, angleRad, nextCheckpoint);
-            podStates.push_back(pod);
+            podStates[p] = pod;
         }
         PlayerState ps(podStates);
-        playerStates.push_back(ps);
+        playerStates[i] = ps;
     }
-    return playerStates;
 }

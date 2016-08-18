@@ -18,8 +18,10 @@ int main() {
 
     // Game loop.
     while (1) {
-        vector<PlayerState> players = inputParser.parseTurn();
+        PlayerState players[PLAYER_COUNT];
+        inputParser.parseTurn(players);
         state.preTurnUpdate(players);
+
         physics.orderByProgress(players[0].pods);
         PairOutput control = bot.move(state.game());
 //         Where are the lead/lagging pods ordered.

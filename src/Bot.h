@@ -16,7 +16,7 @@ public:
 class SimBot {
 public:
     virtual void init(Race& race) = 0;
-    virtual void move(vector<PodState> &ourPods, vector<PodState> &enemyPods) = 0;
+    virtual void move(PodState ourPods[], PodState enemyPods[]) = 0;
 };
 
 

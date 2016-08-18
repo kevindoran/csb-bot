@@ -20,7 +20,7 @@ public:
     /**
      * Determines if there in an intersetion between a travel path and a checkpoint (line-circle intersection).
      */
-    bool passedCheckpoint(const Vector &beforePos, const Vector &afterPos, const Checkpoint &checkpoint);
+    bool passedCheckpoint(const Vector &beforePos, const Vector &afterPos, const Vector &checkpoint);
 
     static float radToDegrees(float radians);
 
@@ -61,12 +61,10 @@ public:
 
     static Vector closestPointOnLine(Vector lineStart, Vector lineEnd, Vector point);
 
-    static Vector closestPointOnLine(float lineStartX, float lineStartY, float lineEndX, float lineEndY, Vector point);
-    void simulate(vector<PodState*> pods);
+    static Vector closestPointOnLine(float lineStartX, float lineStartY, float lineEndX, float lineEndY, float pointX, float pointY);
 
-    static float passedCircleAt(const Vector &beforePos, const Vector &afterPos, const Vector &target, float radius);
-
-    void orderByProgress(vector<PodState> &pods);
+    static float passedCircleAt(float beforePosX, float beforePosY, float afterPosX, float afterPosY, float targetX, float targetY,
+                                float radius);
 
     static float degreesToRad(float degrees);
 
@@ -74,60 +72,50 @@ public:
 
     static void apply(PodState &pod, PodOutputSim control);
 
-    static void apply(vector<PodState> &pods, PairOutput &control);
+    static void apply(PodState* pods, PairOutput control);
 
-    static void applyWithoutChecks(PodState &pod, PodOutputSim &control);
+    static void applyWithoutChecks(PodState &pod, const PodOutputSim &control);
 
-    static void apply(PodState &pod, PodOutputAbs &control);
+    static void apply(PodState &pod, const PodOutputAbs &control);
+
+    void simulate(PodState **pods);
+
+    void orderByProgress(PodState *pods);
+
+    void orderByProgress(vector<PodState> pods);
 };
 
 class Event {
 public:
-    virtual bool occurred() const = 0;
     virtual float time() const = 0;
     virtual void resolve() = 0;
 };
 
 class PassedCheckpoint : public Event {
     PodState* mPod;
-    static const int INVALID = -1;
-    float mTime = INVALID;
+    float mTime;
     int mNextCheckpoint;
     PassedCheckpoint(PodState& pod, float time, int nextCP) : mPod(&pod), mTime(time), mNextCheckpoint(nextCP) {}
 public:
     PassedCheckpoint() {}
-    static PassedCheckpoint testForPassedCheckpoint(PodState& a, Race& r);
-
-    static PassedCheckpoint& invalid() {
-        static PassedCheckpoint invalid;
-        return invalid;
-    }
+    bool static testForPassedCheckpoint(PodState& a, Race& r, PassedCheckpoint* event);
 
     float time() const {return mTime;}
-    bool occurred() const {return mTime != INVALID;}
     void resolve();
 };
 
 class Collision : public Event {
-    // Pointers to allow default constructor.
+    float mTime;
+public:
     PodState* a;
     PodState* b;
-//    Vector collisionPoint;
-    static const int INVALID = -1;
-    float mTime = INVALID;
-public:
+
     Collision(){}
     Collision(PodState& a, PodState& b, float time) : a(&a), b(&b), mTime(time) {}
-    static Collision testForCollision(PodState& a, PodState& b);
-
-    static Collision& invalidCollision() {
-        static Collision invalidCollision;
-        return invalidCollision;
-    }
+    bool static testForCollision(PodState& a, PodState& b, Collision* collision);
 
     void resolve();
     float time() const {return mTime;}
-    bool occurred() const {return mTime != -1;}
 };
 
 

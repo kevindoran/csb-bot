@@ -44,9 +44,10 @@ TEST_F(InputParserTest, basic) {
         EXPECT_EQ(2, race.checkpoints.size());
         Vector cp1(3, 2);
         Vector cp2(1, 3);
-        EXPECT_EQ(cp1, race.checkpoints[0].pos);
-        EXPECT_EQ(cp2, race.checkpoints[1].pos);
-        vector<PlayerState> players = ip.parseTurn();
+        EXPECT_EQ(cp1, race.checkpoints[0]);
+        EXPECT_EQ(cp2, race.checkpoints[1]);
+        PlayerState players[PLAYER_COUNT];
+        ip.parseTurn(players);
         Vector p1pod1(1, 1);
         Vector p1pod2(4, 0);
         EXPECT_EQ(p1pod1, players[OUR_PLAYER_ID].pods[0].pos);
