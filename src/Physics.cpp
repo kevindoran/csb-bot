@@ -132,8 +132,8 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         pods[i]->vel.y = pods[i]->vel.y * DRAG;
         pods[i]->vel.x = (int) pods[i]->vel.x;
         pods[i]->vel.y = (int) pods[i]->vel.y;
-        pods[i]->pos.x = (int) pods[i]->pos.x;
-        pods[i]->pos.y = (int) pods[i]->pos.y;
+        pods[i]->pos.x = (int) round(pods[i]->pos.x);
+        pods[i]->pos.y = (int) round(pods[i]->pos.y);
     }
 }
 
@@ -243,8 +243,8 @@ PodState Physics::move(const PodState& pod, const PodOutputAbs& control, float t
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
     // Need rounding somewhere, or maybe just truncating.
-    pos.x = (int) pos.x;
-    pos.y = (int) pos.y;
+    pos.x = (int) round(pos.x);
+    pos.y = (int) round(pos.y);
     newSpeed.x = (int) (newSpeed.x * DRAG);
     newSpeed.y = (int) (newSpeed.y * DRAG);
     PodState nextState = PodState(pos, newSpeed, newAngle, nextCheckpoint);

@@ -15,7 +15,7 @@ using namespace std;
 
 
 static const int MAX_THRUST = 200;
-static const int MAX_ANGLE_DEG = 15;
+static const int MAX_ANGLE_DEG = 18;
 static constexpr float MAX_ANGLE = M_PI * MAX_ANGLE_DEG / 180;
 static constexpr float DRAG = 0.85f;
 static const int POD_COUNT = 2;
@@ -150,9 +150,9 @@ struct PodOutputAbs {
         } else if(thrust == SHIELD){
             thrustStr = "SHIELD";
         } else {
-            thrustStr = to_string((int)thrust);
+            thrustStr = to_string((int)round(thrust));
         }
-        out << (int) target.x << " " << (int) target.y << " " << thrustStr;
+        out << (int) round(target.x) << " " << (int) round(target.y) << " " << thrustStr;
         return out.str();
     }
 
