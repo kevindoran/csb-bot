@@ -10,12 +10,13 @@ using json = nlohmann::json;
 
 class GameHistory {
 public:
+    vector<Vector> checkpoints;
     vector<PodState> player1Pod1;
     vector<PodState> player1Pod2;
     vector<PodState> player2Pod1;
     vector<PodState> player2Pod2;
 
-    GameHistory() {};
+    GameHistory(vector<Vector> checkpoints) : checkpoints(checkpoints){};
 
     void recordTurn(PodState p11, PodState p12, PodState p21, PodState p22) {
         player1Pod1.push_back(p11);
@@ -34,16 +35,31 @@ public:
         j["shieldEnabled"] = podState.shieldEnabled;
         return j;
     }
+
+    json toJson(Vector& vec) {
+        json v;
+        v["pos"]["x"] = vec.x;
+        v["pos"]["y"] = vec.y;
+        return v;
+    }
+
     void writeToStream(ostream& out) {
         json game;
+        json cps;
+        for(int i = 0; i < checkpoints.size(); i++) {
+            cps.push_back(toJson(checkpoints[i]));
+        }
+        game["checkpoints"] = cps;
+        json turns;
         for(int i = 0; i < player1Pod1.size(); i++) {
             json bothStates;
             bothStates["p1pod1"] = toJson(player1Pod1[i]);
             bothStates["p1pod2"] = toJson(player1Pod2[i]);
             bothStates["p2pod1"] = toJson(player2Pod1[i]);
             bothStates["p2pod2"] = toJson(player2Pod2[i]);
-            game.push_back(bothStates);
+            turns.push_back(bothStates);
         }
+        game["turns"] = turns;
         out << game;
     }
 };
@@ -80,44 +96,45 @@ class Simulation {
 
 
     void stripAndCombine(PodState ourStates[], PodState enemyStates[], PlayerState out[]) {
-        PodState ourPods[] = {strip(ourStates[0]), strip(ourStates[1])};
-        PlayerState us(ourPods);
-        PodState enemyPods[] = {strip(enemyStates[0]), strip(enemyStates[1])};
-        PlayerState enemy(enemyPods);
-        out[0] = us;
-        out[1] = enemy;
+        out[0].pods[0] = strip(ourStates[0]);
+        out[0].pods[1] = strip(ourStates[1]);
+        out[1].pods[0] = strip(enemyStates[0]);
+        out[1].pods[1] = strip(enemyStates[1]);
     }
 
     // Create a pod state as if it was parsed form the game input.
     PodState strip(const PodState& podState) {
         PodState basic;
-        basic = podState;
-        basic.vel = podState.vel;
+        basic.vel.x = (int)podState.vel.x;
+        basic.vel.y = (int)podState.vel.y;
+        basic.pos.x = (int)round(podState.pos.x);
+        basic.pos.y = (int)round(podState.pos.y);
         basic.nextCheckpoint = podState.nextCheckpoint;
-        basic.angle = podState.angle;
+        basic.angle = physics.degreesToRad(round(physics.radToDegrees(podState.angle)));
         return basic;
     }
 
 public:
-    static const int TURN_LIMIT = 2000;
+    static const int TURN_LIMIT = 120;
     Simulation(Race r) : race(r), physics(r) {}
 
     GameHistory simulate(DuelBot* a, DuelBot* b) {
         PodState aPods[POD_COUNT];
         PodState bPods[POD_COUNT];
         initializePods(aPods, bPods);
-        GameHistory history;
+        GameHistory history(race.checkpoints);
         a->init(race);
         b->init(race);
         PodState* pods[] = {&aPods[0], &aPods[1], &bPods[0], &bPods[1]};
         State stateA(race);
         State stateB(race);
         for(int i = 0; i < TURN_LIMIT; i++) {
+            a = new AnnealingBot(race);
             history.recordTurn(*pods[0], *pods[1], *pods[2], *pods[3]);
 
             if (victory(aPods, bPods) || victory(bPods, aPods)) {
-                cout << "Finished. Winner is: bot #" << (victory(aPods, bPods) ? "1" : "2") << endl;
-                cout << "Victory on turn: " << i << endl;
+//                cout << "Finished. Winner is: bot #" << (victory(aPods, bPods) ? "1" : "2") << endl;
+//                cout << "Victory on turn: " << i << endl;
                 return history;
             }
             PlayerState forA[PLAYER_COUNT];
@@ -134,9 +151,24 @@ public:
                     bOut.o2.absolute(stateB.game().ourState().pods[1]));
             physics.apply(aPods, aOut);
             physics.apply(bPods, bOut);
+            for(int z= 0; z < 3; z++) {
+                for(int y = z + 1; y < 4; y++) {
+                    if(Vector::dist(pods[z]->pos, pods[y]->pos) < 400) {
+                        cerr << "There should have been a collision." << endl;
+                    }
+                }
+            }
             physics.simulate(pods);
+            for(int z= 0; z < 3; z++) {
+                for(int y = z + 1; y < 4; y++) {
+                    if(Vector::dist(pods[z]->pos, pods[y]->pos) < 400) {
+                        cerr << "There should have been a collision." << endl;
+                    }
+                }
+            }
         }
         cout << "Game reached turn limit.";
+        delete(a);
         return history;
     }
 };
