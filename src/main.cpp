@@ -6,30 +6,33 @@
 #include "PodracerBot.h"
 #include "Physics.h"
 #include "AnnealingBot.h"
+#include <chrono>
 
 int main() {
     InputParser inputParser(cin);
     Race race = inputParser.init();
     State state(race);
     Physics physics(race);
-    AnnealingBot bot;
-    bot.init(race);
     std::srand(std::time(0));
 
     // Game loop.
     while (1) {
+        long long startTime = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+        AnnealingBot bot(race, 150);
         PlayerState players[PLAYER_COUNT];
         inputParser.parseTurn(players);
         state.preTurnUpdate(players);
 
-        physics.orderByProgress(players[0].pods);
+        int leadPodID = physics.leadPodID(players[0].pods);
+        
         PairOutput control = bot.move(state.game());
-//         Where are the lead/lagging pods ordered.
         PodOutputAbs po1 = control.o1.absolute(state.game().ourState().pods[0]);
         PodOutputAbs po2 = control.o2.absolute(state.game().ourState().pods[1]);
         cout << po1.toString() << endl
              << po2.toString() << endl;
         state.postTurnUpdate(po1, po2);
+        long long endTime = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+        cerr << "Runtime: " << endTime-startTime << endl;
 //
 //        int leadPodID = state.game().ourState().leadPodID;
 //        Racer racer = Racer();
