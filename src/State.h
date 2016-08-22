@@ -29,18 +29,35 @@ static const int OUR_PLAYER_ID = 0;
 static const int BOOST_ACC = 650;
 
 
-struct Race {
+class Race {
+public:
     int laps;
     vector<Vector> checkpoints;
+    vector<float> nextCPDistaces;
+    vector<float> previousCPDistances;
     float maxCheckpointDist = 0;
 
     Race() {}
 
     Race(int laps, vector<Vector> checkpoints) :
             laps(laps), checkpoints(checkpoints) {
+        previousCPDistances.push_back(0);
         for(int i = 0; i < checkpoints.size()-1; i++) {
-            maxCheckpointDist = max(maxCheckpointDist, (checkpoints[i] - checkpoints[i+1]).getLength());
+            nextCPDistaces.push_back((checkpoints[i] - checkpoints[i+1]).getLength());
+            previousCPDistances.push_back(nextCPDistaces[i]);
+            maxCheckpointDist = max(maxCheckpointDist, nextCPDistaces[i]);
         }
+        nextCPDistaces.push_back((checkpoints[checkpoints.size()-1] - checkpoints[0]).getLength());
+        previousCPDistances[0] = nextCPDistaces[checkpoints.size()-1];
+        maxCheckpointDist = max(maxCheckpointDist, nextCPDistaces[checkpoints.size()-1]);
+    }
+
+    float distToNextCP(int fromCP) {
+        return nextCPDistaces[fromCP];
+    }
+
+    float distFromPrevCP(int toCP) {
+        return previousCPDistances[toCP];
     }
 
     int totalCPCount() {
@@ -58,7 +75,7 @@ struct PodState {
     // In radians
     float angle;
     bool shieldEnabled = false;
-    int nextCheckpoint = 0;
+    int nextCheckpoint = 1;
     int passedCheckpoints = 0;
     int turnsSinceCP = 0;
     int turnsSinceShield = SHIELD_COOLDOWN + 1;
