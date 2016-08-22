@@ -80,9 +80,9 @@ public:
 
     void simulate(PodState **pods);
 
-    void orderByProgress(PodState *pods);
+    bool orderByProgress(PodState *pods);
 
-    void orderByProgress(vector<PodState> pods);
+    int leadPodID(PodState *pods);
 };
 
 class Event {

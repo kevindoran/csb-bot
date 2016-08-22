@@ -363,10 +363,10 @@ PodState Physics::extrapolate(const PodState& pod, const PodOutputAbs& control, 
     return p;
 }
 
-void Physics::orderByProgress(PodState pods[]) {
+int Physics::leadPodID(PodState pods[]) {
     if(pods[0].passedCheckpoints > pods[1].passedCheckpoints) {
         // Already in order.
-        return;
+        return 0;
     } else {
         // Another bottleneck spot, so resorting to manual computation.
         float diffX1 = race.checkpoints[pods[0].nextCheckpoint].x - pods[0].pos.x;
@@ -374,13 +374,23 @@ void Physics::orderByProgress(PodState pods[]) {
         float diffX2 = race.checkpoints[pods[1].nextCheckpoint].x - pods[1].pos.x;
         float diffY2 = race.checkpoints[pods[1].nextCheckpoint].y - pods[1].pos.y;
         if(pods[1].passedCheckpoints > pods[0].passedCheckpoints ||
-                (diffX1*diffX1 + diffY1*diffY1) > (diffX2*diffX2 + diffY2*diffY2)) {
-            // Swap.
-            PodState temp = pods[0];
-            pods[0] = pods[1];
-            pods[1] = temp;
+           (diffX1*diffX1 + diffY1*diffY1) > (diffX2*diffX2 + diffY2*diffY2)) {
+            return 1;
         }
     }
+    return 0;
+}
+
+// Return true if the pods needed reordering.
+bool Physics::orderByProgress(PodState pods[]) {
+    if(leadPodID(pods) == 1) {
+        // Swap.
+        PodState temp = pods[0];
+        pods[0] = pods[1];
+        pods[1] = temp;
+        return true;
+    }
+    return false;
 }
 
 float Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
