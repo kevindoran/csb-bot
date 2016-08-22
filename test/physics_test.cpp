@@ -147,17 +147,7 @@ TEST_F(PhysicsTest, isCollision) {
     EXPECT_FALSE(isCollision);
 }
 
-TEST_F(PhysicsTest, simulate_single) {
-    // Single pod.
-    podState->vel = Vector(100, 0);
-    PodState* pods[] = {podState};
-    physics->simulate(pods);
-    EXPECT_EQ(Vector(85,0), podState->vel);
-    EXPECT_EQ(Vector(3100, 0), podState->pos);
-}
-
-
-TEST(PhysicsTest2, closest_point_on_line) {
+TEST(PhysicsTestNoFixture, closest_point_on_line) {
     // Point above center of line.
     Vector line1(0,0);
     Vector line2(10,0);
@@ -188,12 +178,60 @@ TEST(PhysicsTest2, closest_point_on_line) {
 }
 
 TEST_F(PhysicsTest, simulate_collision) {
-    PodState a(Vector(0,0), Vector(200,0), 0);
-    PodState b(Vector(1200, 0), Vector(-200, 0), 0);
-    PodState* pods[] = {&a, &b};
+    PodState a(Vector(0,0), Vector(300,0), 0);
+    PodState b(Vector(1200, 0), Vector(-300, 0), 0);
+    PodState extra[2] = {PodState(Vector(-2000,-2000), Vector(0,0), 0), PodState(Vector(-3000,-3000), Vector(0,0), 0)};
+    PodState* pods[] = {&a, &b, &extra[0], &extra[1]};
     physics->simulate(pods);
-    EXPECT_EQ(Vector(200,0), a.pos);
-    EXPECT_EQ(Vector(1000,0), b.pos);
-    EXPECT_EQ(Vector(-170, 0), a.vel);
-    EXPECT_EQ(Vector(170, 0), b.vel);
+    EXPECT_EQ(Vector(100,0), a.pos);
+    EXPECT_EQ(Vector(1100,0), b.pos);
+    EXPECT_EQ(Vector(-300*0.85, 0), a.vel);
+    EXPECT_EQ(Vector(300*0.85, 0), b.vel);
+}
+
+TEST_F(PhysicsTest, passed_circle_at) {
+    Vector checkpoint(2200, 0);
+    bool passed = physics->passedCheckpoint(Vector(0,0), Vector(1500, 0), checkpoint);
+    EXPECT_FALSE(passed);
+
+    passed = physics->passedCheckpoint(Vector(0, 600), Vector(3000, 600), checkpoint);
+    EXPECT_FALSE(passed);
+
+    passed = physics->passedCheckpoint(Vector(0, 550), Vector(3000, 550), checkpoint);
+    EXPECT_FALSE(passed);
+
+    passed = physics->passedCheckpoint(Vector(0, 0), Vector(1601, 0), checkpoint);
+    EXPECT_FALSE(passed);
+}
+
+TEST(PhysicsTestNoFixture, lead_pod_id) {
+    Race r(3, {Vector(0,0), Vector(9000, 9000), Vector(12000, 6000)});
+    Physics physics(r);
+    PodState p1(Vector(-100, -100), Vector(300, 300), 0);
+    PodState p2(Vector(11000, 7000), Vector(0, 0), 0);
+    p1.nextCheckpoint = 1;
+    p2.nextCheckpoint = 1;
+    PodState pods[] = {p1, p2};
+    EXPECT_EQ(1, physics.leadPodID(pods));
+
+    pods[1].nextCheckpoint = 2;
+    EXPECT_EQ(1, physics.leadPodID(pods));
+
+    pods[0].nextCheckpoint = 2;
+    EXPECT_EQ(1, physics.leadPodID(pods));
+
+    pods[0].pos = Vector(12000, 5000);
+    EXPECT_EQ(0, physics.leadPodID(pods));
+}
+
+TEST(PhysicsTestNoFixture, order_pods_by_progress) {
+    Race r(3, {Vector(0,0), Vector(9000, 9000), Vector(12000, 6000)});
+    Physics physics(r);
+    PodState p1(Vector(-100, -100), Vector(300, 300), 0);
+    PodState p2(Vector(11000, 7000), Vector(0, 0), 0);
+    p1.nextCheckpoint = 1;
+    p2.nextCheckpoint = 2;
+    PodState pods[] = {p1, p2};
+    physics.orderByProgress(pods);
+    EXPECT_EQ(2, pods[0].nextCheckpoint);
 }

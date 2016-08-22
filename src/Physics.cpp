@@ -7,7 +7,6 @@
 #include "State.h"
 #include "Physics.h"
 
-
 void Physics::apply(PodState& pod, PodOutputSim control) {
     if(abs(control.angle) > MAX_ANGLE) {
         control.angle = control.angle < -MAX_ANGLE ? -MAX_ANGLE : MAX_ANGLE;
@@ -78,22 +77,28 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
     }
     float time = 0;
     vector<PassedCheckpoint> pCPEvents;
+    PassedCheckpoint cpEvent;
     Collision earliest;
     int earliestIdx[2];
+    int skip[2] = {-1, -1};
     bool started = false;
     bool hasCollision = false;
     bool occurred = false;
     Collision collision;
-    PassedCheckpoint cpEvent;
-    int skip[2] = {-1, -1};
     while(time < 1) {
         for (int i = 0; i < POD_COUNT*2 - 1; i++) {
             // Collision or checkpoint passing first?
             for (int j = i + 1; j < POD_COUNT*2; j++) {
+                // Shortcut for performance: the previous two to collide can't collide next.
+                if (skip[0] == i && skip[1] == j) {
+                    continue;
+                }
                 // These two had the previous collision.
-                if(skip[1] == i && skip[2] == j) continue;
                 occurred = Collision::testForCollision(*pods[i], *pods[j], &collision);
-                if (occurred && collision.time() + time < 1.0 && (!hasCollision || earliest.time() > collision.time())) {
+                // TODO: can the second zero time collision be ignored?
+
+                if (occurred && collision.time() + time < 1.0 &&
+                    (!hasCollision || earliest.time() > collision.time())) {
                     hasCollision = true;
                     earliest = collision;
                     earliestIdx[0] = i;
@@ -102,7 +107,7 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
             }
             // Can optimize by keeping list of pc events and resolving all those before the earliest collision.
             occurred = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race, &cpEvent);
-            if (occurred) {
+            if (occurred && cpEvent.time() + time < 1.0) {
                 pCPEvents.push_back(cpEvent);
             }
         }
@@ -111,6 +116,7 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
                 pcp.resolve();
             }
         }
+        pCPEvents.clear();
         float moveTime = hasCollision ? earliest.time() : 1.0 - time;
 
         for(int i = 0; i < POD_COUNT*2; i++) {
@@ -132,16 +138,15 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         pods[i]->vel.y = pods[i]->vel.y * DRAG;
         pods[i]->vel.x = (int) pods[i]->vel.x;
         pods[i]->vel.y = (int) pods[i]->vel.y;
-        pods[i]->pos.x = (int) round(pods[i]->pos.x);
-        pods[i]->pos.y = (int) round(pods[i]->pos.y);
+        // The instructions say that position is rounded, however, on inspection, truncating seems to be closer
+        // to reality. In addition, rounding is a non-insignificant performance cost.
+        pods[i]->pos.x = (int) pods[i]->pos.x;//round(pods[i]->pos.x);
+        pods[i]->pos.y = (int) pods[i]->pos.y;//round(pods[i]->pos.y);
     }
 }
 
 bool Collision::testForCollision(PodState& a, PodState& b, Collision* collision) {
-    // Change reference frame to a. a pos = (0, 0)
-//    Vector pathStart = b.pos - a.pos;
-//    Vector vel = b.vel - a.vel;
-//    Vector pathEnd = pathStart + vel;
+    // Vectors are cleaner, but slower.
     float pathStartX = b.pos.x - a.pos.x;
     float pathStartY = b.pos.y - a.pos.y;
     float velX = b.vel.x - a.vel.x;
@@ -157,47 +162,47 @@ bool Collision::testForCollision(PodState& a, PodState& b, Collision* collision)
     if(closestPoint.getLengthSq() > (2*POD_RADIUS)*(2*POD_RADIUS)) {
         return false;
     } else {
-//        if((closestPoint.x == pathStartX && closestPoint.y == pathStartY) || (closestPoint.x == pathEndX && closestPoint.y == pathEndY)) {
-            //cerr << "Warning, probably a faulty collision." << endl;
-//        }
         float velLength = sqrt(velX * velX + velY * velY);
         float parallelDist = abs((pathStartX * (pathEndX - pathStartX) + pathStartY * (pathEndY - pathStartY)) / velLength);
         float tangentDistSq = (pathStartX*pathStartX + pathStartY*pathStartY) - (parallelDist*parallelDist);
 
         float backDist = sqrt((POD_RADIUS*2)*(POD_RADIUS*2) - tangentDistSq);//closestPoint.getLengthSq());
 
-//        float bCenterX = closestPoint.x - backDist * (velX / velLength);
-//        float bCenterY = closestPoint.y - backDist * (velY / velLength);
-//        float travelX = pathStartX - bCenterX;
-//        float travelY = pathStartY - bCenterY;
-//        float travelDist = sqrt(travelX*travelX + travelY * travelY);
         float travelDist = parallelDist - backDist;
+        // Rounding can cause the pods to overlap. If the pods are going to collide, resolve the collision at t=0,
+        // otherwise ignore (ignore if the pods have no velocity component at odds. The fastest way to check is
+        // is indirectly by testing if the closest point is actually the current point- if so, the pods must be
+        // moving away from each other).
+        if(travelDist < 0) {
+            if (closestPoint.x == pathStartX && closestPoint.y == pathStartY) {
+                // Pods are moving away from each other.
+                return false;
+            } else {
+                travelDist = 0;
+            }
+        }
         float time = travelDist / velLength;
-        if(time < 0.00001) return false;
-//        Vector collisionPoint = a.vel * time + bCenter * 0.5;
-        // Reset to normal reference frame.
-        // Turns out that the actual collision point is not important, as the bots move to it before resolving the
-        // collision.
-//        collisionPoint = collisionPoint + a.pos;
         *collision = Collision(a, b, time);
+        return true;
     }
 }
 
 void Collision::resolve() {
+    // TODO: some vector usage could be converted to basic types.
     float m1 = a->shieldEnabled ? 10 : 1;
     float m2 = b->shieldEnabled ? 10 : 1;
     float mCoeff = (m1 * m2) / (m1 + m2);
-//    Vector normal = (collisionPoint - a->pos).normalize();
     Vector normal = (b->pos - a->pos).normalize();
     Vector relativeVel = a->vel - b->vel;
     Vector impactNormal = normal.project(relativeVel) * mCoeff;
     a->vel -= impactNormal * (1/m1);
     b->vel += impactNormal * (1/m2);
-    // There is a half impulse minimum of 120.
+    // There is a half impulse minimum of 120 (stated game mechanics).
     float impulse = impactNormal.getLength();
-    if(impulse == 0.0) cerr << "Impulse is zero" << endl;
-    if(impulse < 120.0) {
-        impulse *= 120.0 / impulse;
+    // TODO: The time() !=0 check is might be faulty, however, it was included to prevent
+    // infinite bouncing caused by overlaps.
+    if(impulse < 120.0 && time() != 0) {
+        impactNormal *= 120.0 / impulse;
     }
     a->vel -= impactNormal * (1/m1);
     b->vel += impactNormal * (1/m2);
@@ -242,19 +247,18 @@ PodState Physics::move(const PodState& pod, const PodOutputAbs& control, float t
     if(passedCheckpoint(pod.pos, pos, race.checkpoints[pod.nextCheckpoint])) {
         nextCheckpoint = (nextCheckpoint + 1) % race.checkpoints.size();
     }
-    // Need rounding somewhere, or maybe just truncating.
-    pos.x = (int) round(pos.x);
-    pos.y = (int) round(pos.y);
+    pos.x = (int) pos.x;//round(pos.x);
+    pos.y = (int) pos.y;//round(pos.y);
     newSpeed.x = (int) (newSpeed.x * DRAG);
     newSpeed.y = (int) (newSpeed.y * DRAG);
     PodState nextState = PodState(pos, newSpeed, newAngle, nextCheckpoint);
     return nextState;
 }
 
-
 bool Physics::passedCheckpoint(const Vector& beforePos, const Vector& afterPos, const Vector& checkpoint) {
     return passedPoint(beforePos, afterPos, checkpoint, CHECKPOINT_RADIUS);
 }
+
 bool Physics::passedPoint(const Vector& beforePos, const Vector& afterPos, const Vector& target, float radius) {
     float time = passedCircleAt(beforePos.x, beforePos.y, afterPos.x, afterPos.y, target.x, target.y, radius);
     return time != -1;
@@ -266,23 +270,30 @@ float Physics::passedCircleAt(float beforePosX, float beforePosY, float afterPos
     float Fx = beforePosX - targetX;
     float Fy = beforePosY - targetY;
     // t^2(D*D) + 2t(F*D) + (F*F - r^2) = 0
-    long a = Dx*Dx + Dy*Dy;
-    long b = 2 * (Fx*Dx + Fy*Dy);
-    long c = (Fx*Fx + Fy*Fx) - radius * radius;
-    long discrimiminant = b * b - 4 * a * c;
+    float a = Dx*Dx + Dy*Dy;
+    float b = 2 * (Fx*Dx + Fy*Dy);
+    // This could get up to 8.29e16. Long and even long long are two small.
+    float c = (Fx*Fx + Fy*Fy) - radius * radius;
+    float  discrimiminant = b * b - 4 * a * c;
     if(discrimiminant < 0) {
         return -1;
+    } else if(discrimiminant == 0) {
+        // The pod's path skims the radius.
+        return - 1;
     } else {
         float disc = sqrt(discrimiminant);
         float t1 = (-b - disc)/(2*a);
-//        float t2 = (-b + disc)/(2*a);
-        return (t1 >= 0 && t1 <= 1) ? t1 : -1; // Ignoring t2, which represents passing the circle from the inside || (t2 >= 0 && t2 <= 1);
+        // Ignoring t2, which represents passing the circle from the inside || (t2 >= 0 && t2 <= 1);
+        // float t2 = (-b + disc)/(2*a);
+        // Ignoring t1 == 0 or t1 == 1 case. This seems reasonable, but may not be how the game deals with it.
+        return (t1 > 0 && t1 < 1) ? t1 : -1;
     }
 }
 
 Vector Physics::closestPointOnLine(Vector lineStart, Vector lineEnd, Vector point) {
     return closestPointOnLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, point.x, point.y);
 }
+
 Vector Physics::closestPointOnLine(float lineStartX, float lineStartY, float lineEndX, float lineEndY, float pointX, float pointY) {
     // Test if the closest point is one of the line segment end points.
     float pathX = lineEndX - lineStartX;
@@ -345,12 +356,14 @@ bool Physics::isCollision(const PodState &podA, const PodOutputAbs &controlA, co
     return false;
 }
 
+// Used for legacy pod.
 PodOutputAbs Physics::expectedControl(const PodState& previous, const PodState& current) {
     Vector force = (current.vel * (1/DRAG)) - previous.vel;
     PodOutputAbs control(force.getLength(), current.pos + force);
     return control;
 }
 
+// Used for legacy pod.
 PodState Physics::extrapolate(const PodState& pod, const PodOutputAbs& control, int turns) {
     Vector relativeForce = control.target - pod.pos;
     PodOutputAbs updatedControl;
@@ -395,7 +408,6 @@ bool Physics::orderByProgress(PodState pods[]) {
 
 float Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
     // This method is a bottleneck, so using Vector is avoided.
-    // Vector diff = toPoint - fromPoint;
     float diffX = toPoint.x - fromPoint.x;
     float diffY = toPoint.y - fromPoint.y;
     float length = sqrt(diffX*diffX + diffY*diffY);
@@ -415,9 +427,9 @@ float Physics::angleBetween(const Vector& from, const Vector& to) {
 }
 
 float Physics::radToDegrees(float radians) {
-    return 180 * radians / M_PI;
+    return 180.0 * radians / M_PI;
 }
 
 float Physics::degreesToRad(float degrees) {
-    return M_PI * (degrees / 180);
+    return M_PI * (degrees / 180.0);
 }
