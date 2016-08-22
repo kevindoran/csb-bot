@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 class Vector {
     static float cosFast(float x) noexcept {
@@ -155,7 +156,13 @@ public:
     }
 
     bool operator==(const Vector& other) const {
-        return (x == other.x && y == other.y);
+        if(x==other.x && y==other.y) return true;
+        // Essentially equal.
+        bool xeq = std::fabs(x - other.x) <= ( (std::fabs(x) > std::fabs(other.x) ? std::fabs(other.x) :
+                                                std::fabs(x)) * std::numeric_limits<float>::epsilon());
+        bool yeq = std::fabs(y - other.y) <= ( (std::fabs(y) > std::fabs(other.y) ? std::fabs(other.y) :
+                                                std::fabs(y)) * std::numeric_limits<float>::epsilon());
+        return xeq && yeq;
     }
 
     bool operator !=(const Vector& other) const {
