@@ -45,6 +45,34 @@ TEST_F(DuelBotTest, annealing_bot_test) {
     }
 }
 
+TEST(DuelBotTestNoFixture, annealing_bot_score) {
+    Race race(3, {Vector(0,0), Vector(15000,0), Vector(17000, 10000)});
+    AnnealingBot bot(race);
+    PodState p1pod1Pre(Vector(5000, 0), Vector(0,0), 0, 1);
+    PodState p1pod2Pre(Vector(5000, 0), Vector(0,0), 0, 1);
+    PodState p2pod1Pre(Vector(5000, 0), Vector(0,0), 0, 1);
+    PodState p2pod2Pre(Vector(5000, 0), Vector(0,0), 0, 1);
+
+    // Option 1 (Should be lower score)
+    PodState p1pod1(Vector(15000, 0), Vector(0, 0), 0, 1);
+    PodState p1pod2(Vector(0, 0), Vector(0, 0), 0, 1);
+    PodState p2pod1(Vector(7000, 0), Vector(0, 0), 0, 1);
+    PodState p2pod2(Vector(8000, 0), Vector(0, 0), 0, 1);
+
+    // Option 2
+    PodState p1pod12(Vector(15001, 0), Vector(0, 0), 0, 2);
+
+    const PodState* podsPre[] = {&p1pod1Pre, &p1pod2Pre};
+    const PodState* enemyPodsPre[] = {&p2pod1Pre, &p2pod2Pre};
+    const PodState* enemyPods1[] = {&p2pod1, &p2pod2};
+    const PodState* pods1[] = {&p1pod1, &p1pod2};
+    const PodState* pods2[] = {&p1pod12, &p1pod2};
+
+    float outsideCP = bot.score(pods1, podsPre, enemyPods1, enemyPodsPre);
+    float insideCP = bot.score(pods2, podsPre, enemyPods1, enemyPodsPre);
+    ASSERT_GT(outsideCP, insideCP);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
