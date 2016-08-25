@@ -58,6 +58,11 @@ void State::preTurnUpdate(PlayerState playerStates[]) {
     }
     current = GameState(race, playerStates, turn);
     if(turn == 0) {
+        for(int i = 0; i < PLAYER_COUNT; i++) {
+            for(int j= 0; j < POD_COUNT; j++) {
+                current.playerStates[i].pods[j].angle = Physics::angleTo(current.playerStates[i].pods[j].pos, race.checkpoints[1]);
+            }
+        }
         // Get pod 0 to target enemy 0 so that there are no cross-overs in the path.
         current.ourState().leadPodID = 1;
         current.enemyState().leadPodID = 0;
