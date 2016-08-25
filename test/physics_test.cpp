@@ -2,6 +2,8 @@
 // Created by Kevin on 2/08/2016.
 //
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include "gtest/gtest.h"
 
 #include "Physics.h"
@@ -63,13 +65,18 @@ TEST_F(PhysicsTest, simpleMove) {
 TEST_F(PhysicsTest, angleTo) {
     Vector a(200, 200);
     Vector b(200, 400);
-    int expectedAngle = M_PI / 2;
-    int ans = physics->angleTo(a, b);
+    float expectedAngle = M_PI / 2;
+    float ans = physics->angleTo(a, b);
     EXPECT_EQ(expectedAngle, ans);
 
     Vector c(200, 0);
-    expectedAngle = M_PI * 3/2;
+    expectedAngle = M_PI * 3.0/2.0;
     ans = physics->angleTo(a, c);
+    EXPECT_EQ(expectedAngle, ans);
+
+    Vector d(0, 0);
+    expectedAngle = M_PI * 5.0/4.0;
+    ans = physics->angleTo(a, d);
     EXPECT_EQ(expectedAngle, ans);
 }
 
@@ -200,7 +207,7 @@ TEST_F(PhysicsTest, passed_circle_at) {
     passed = physics->passedCheckpoint(Vector(0, 550), Vector(3000, 550), checkpoint);
     EXPECT_FALSE(passed);
 
-    passed = physics->passedCheckpoint(Vector(0, 0), Vector(1601, 0), checkpoint);
+    passed = physics->passedCheckpoint(Vector(0, 0), Vector(1600, 0), checkpoint);
     EXPECT_FALSE(passed);
 }
 
