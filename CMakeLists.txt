@@ -21,6 +21,9 @@ target_link_libraries(main PodracerBot)
 add_executable(simulation src/simulationMain.cpp)
 target_link_libraries(simulation PodracerBot)
 
+add_executable(paramSim src/parameterSimMain.cpp)
+target_link_libraries(paramSim PodracerBot)
+
 add_executable(merged merged.cpp)
 add_dependencies(merged deploy)
 
