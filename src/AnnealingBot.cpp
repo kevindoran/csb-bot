@@ -3,7 +3,6 @@
 #include <limits>
 #include <cstring>
 #include <cstdlib>
-#include <stdlib.h>
 
 #include "AnnealingBot.h"
 #include "State.h"
@@ -73,26 +72,28 @@ void AnnealingBot::randomEdit(PairOutput& po, int turnsRemaining, float algoProg
 }
 
 void AnnealingBot::randomSolution(PairOutput sol[]) {
-    for(int i = 0; i < turns; i++) {
+    for(int i = 0; i < TURNS; i++) {
         sol[i] = random();
     }
 }
 
-void AnnealingBot::train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]) {
+void AnnealingBot::_train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]) {
     ourSimHistory[0][0] = podsToTrain[0];
     ourSimHistory[0][1] = podsToTrain[1];
     enemySimHistory[0][0] = opponentPods[0];
     enemySimHistory[0][1] = opponentPods[1];
     double exponent;
     double merit, flip;
-//    if(hasPrevious) {
-//        memcpy(solution, previousSolution, turns * sizeof(PairOutput));
-//    } else {
+    if(hasPrevious) {
+        memcpy(solution, previousSolution, TURNS * sizeof(PairOutput));
+    } else {
         randomSolution(solution);
-//    }
+    }
     float currentScore = score(solution, 0);
     float bestScore = currentScore;
-//    cout << currentScore << ", ";
+#ifdef SIMOUT
+    cout << currentScore << ", ";
+#endif
     float updated_score;
     float startScore;
     float delta;
@@ -106,18 +107,20 @@ void AnnealingBot::train(const PodState podsToTrain[], const PodState opponentPo
         startScore = currentScore;
         for(int j = 1; j <= stepsPerTemp; j++) {
             // Make edits to one turn of solution.
-            toEdit = rand() % turns;
+            toEdit = rand() % TURNS;
             saved = solution[toEdit];
-            randomEdit(solution[toEdit], turns - toEdit, ((float)coolingIdx)/coolingSteps);
+            randomEdit(solution[toEdit], TURNS - toEdit, ((float)coolingIdx)/coolingSteps);
             updated_score =  score(solution, toEdit);
             if(updated_score < 0) {
-                cerr << "Score below zero  " << updated_score << endl;
+//                cerr << "Score below zero  " << updated_score << endl;
             }
             if(updated_score < bestScore) {
                 bestScore = updated_score;
                 best = solution[0];
             }
-//            cout << updated_score << ", ";
+#ifdef SIMOUT
+            cout << updated_score << ", ";
+#endif
             delta = updated_score - currentScore;
             if(delta > 0) diffSum += delta;
             exponent = (-delta /currentScore) / (K * currentTemp);
@@ -154,18 +157,23 @@ void AnnealingBot::train(const PodState podsToTrain[], const PodState opponentPo
 //    cerr << "Current (pos, vel)   " << podsToTrain[0].pos << "   " << podsToTrain[0].vel << endl;
 //    cerr << "Moving: (thrust, angle)  " << " (" << solution[0].o1.thrust << ", " << physics.radToDegrees(solution[0].o1.angle) << ")   " << endl
 //         << "Expecting state: (pos, vel, cp)   " << next.pos << "   " << next.vel << "   " << next.nextCheckpoint << endl;
-//    cout << endl;
-    memcpy(previousSolution, solution, turns*sizeof(PairOutput));
+#ifdef SIMOUT
+    cout << endl;
+#endif
+//    memcpy(previousSolution, solution, TURNS*sizeof(PairOutput));
 }
 
 
+
+
 float AnnealingBot::score(const PairOutput solution[], int startFromTurn) {
-    CustomAI *customAI = new CustomAI(solution, startFromTurn);
-    simulate(customAI, &enemyBot, turns, startFromTurn);
+    CustomAI *customAI = new CustomAI(race, solution, startFromTurn);
+    enemyBot->setTurn(startFromTurn);
+    simulate(customAI, enemyBot, TURNS, startFromTurn);
     delete (customAI);
-    const PodState* ourPods[] = {&ourSimHistory[turns][0], &ourSimHistory[turns][1]};
+    const PodState* ourPods[] = {&ourSimHistory[TURNS][0], &ourSimHistory[TURNS][1]};
     const PodState* ourPodsPrev[] = {&ourSimHistory[0][0], &ourSimHistory[0][1]};
-    const PodState* enemyPods[] = {&enemySimHistory[turns][0], &enemySimHistory[turns][1]};
+    const PodState* enemyPods[] = {&enemySimHistory[TURNS][0], &enemySimHistory[TURNS][1]};
     const PodState* enemyPodsPrev[] = {&enemySimHistory[0][0], &enemySimHistory[0][1]};
     return score(ourPods, ourPodsPrev, enemyPods, enemyPodsPrev);
 }
@@ -173,76 +181,86 @@ float AnnealingBot::score(const PairOutput solution[], int startFromTurn) {
 float AnnealingBot::score(const PodState* pods[], const PodState* podsPrev[], const PodState* enemyPods[], const PodState* enemyPodsPrev[]) {
     const int totalCPs = race.totalCPCount();
 
-    if(pods[0]->passedCheckpoints == totalCPs) {
-        for(int i = 1; i <= turns; i++) {
-            if(ourSimHistory[0][i].passedCheckpoints == totalCPs) {
-                return minScore + i * 500;
-            }
-        }
-    }
-    if(enemyPods[0]->passedCheckpoints == totalCPs) {
-        for(int i = 0; i < turns; i++) {
-            if(enemySimHistory[0][i].passedCheckpoints == totalCPs) {
-                return maxScore  - i * 500;
-            }
-        }
-    }
-    if(pods[0]->turnsSinceCP >= WANDER_TIMEOUT) {
+//    if(pods[0]->passedCheckpoints == totalCPs) {
+//        for(int i = 1; i <= TURNS; i++) {
+//            if(ourSimHistory[0][i].passedCheckpoints == totalCPs) {
+//                return minScore + i * 500;
+//            }
+//        }
+//    }
+//    if(enemyPods[0]->passedCheckpoints == totalCPs) {
+//        for(int i = 0; i < TURNS; i++) {
+//            if(enemySimHistory[0][i].passedCheckpoints == totalCPs) {
+//                return maxScore  - i * 500;
+//            }
+//        }
+//    }
+    if(pods[0]->turnsSinceCP >= WANDER_TIMEOUT && pods[1]->turnsSinceCP >= WANDER_TIMEOUT) {
         return maxScore;
     }
-    if(enemyPods[0]->turnsSinceCP >= WANDER_TIMEOUT) {
+    if(enemyPods[0]->turnsSinceCP >= WANDER_TIMEOUT && enemyPods[1]->turnsSinceCP >= WANDER_TIMEOUT) {
         return minScore;
     }
 
-//    int nextCPID = pods[0]->nextCheckpoint;
-//    int prevCPID = podsPrev[0]->nextCheckpoint;
-//    Vector& nextCP = race.checkpoints[nextCPID];
-//    Vector& prevNextCP = race.checkpoints[prevCPID];
-//    float initProgress = race.distFromPrevCP(prevCPID) - (prevNextCP - podsPrev[0]->pos).getLength();
-//    float racerScore = 0;
-//    for(int i = prevCPID; i < nextCPID; i++) {
-//        racerScore += race.distFromPrevCP(prevCPID);
-//        racerScore += 2500; // bonus to clear the further side of the checkpoint.
-//    }
-//    racerScore += race.distFromPrevCP(nextCPID) - Vector::dist(nextCP, pods[0]->pos);
-//    racerScore -= initProgress;
+    // Racer
+    float racerScore = progress(pods[0], podsPrev[0]) - sFactors.enemyProgress*progress(enemyPods[0], enemyPodsPrev[0]);
+    racerScore -= 0.5*engagedScore(enemyPods[1], pods[0], podsPrev[0]);
+    float chaserScore = 0;
+    if(pods[0]->turnsSinceCP > 60) {
+            chaserScore -=  Vector::dist(pods[0]->pos, pods[1]->pos);
+            chaserScore += Vector::dist(enemyPods[1]->pos, pods[0]->pos);
+        } else {
+        chaserScore = engagedScore(pods[1], enemyPods[0], enemyPodsPrev[1]);
+    }
+    return -(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
+}
 
-//    int enextCPID = enemyPods[0]->nextCheckpoint;
-//    int eprevCPID = enemyPodsPrev[0]->nextCheckpoint;
-//    Vector& enextCP = race.checkpoints[enextCPID];
-//    Vector& eprevNextCP = race.checkpoints[eprevCPID];
-//    float einitProgress = race.distFromPrevCP(eprevCPID) - Vector::dist(eprevNextCP, enemyPodsPrev[0]->pos) - 600;
-//    float eracerScore = 0;
-//    for(int i = eprevCPID; i < enextCPID; i++) {
-//        eracerScore += race.distFromPrevCP(eprevCPID) - 1200;
-//        eracerScore += 1500; // bonus to clear the further side of the checkpoint.
-//    }
-//
-//    eracerScore += race.distFromPrevCP(enextCPID) - Vector::dist(enextCP, enemyPods[0]->pos) - 600;
-//    eracerScore -= einitProgress;
-//
-//    racerScore -= 0.5*eracerScore;
+float AnnealingBot::progress(const PodState* pod, const PodState* previous) {
+    // Range: [0, 20000]
+    static const int PASS_CP_BONUS = sFactors.passCPBonus;
+    int ourNextCPID = pod->nextCheckpoint;
+    int ourCurCPID = previous->nextCheckpoint;
+    Vector ourNextCP = race.checkpoints[ourCurCPID];
+    Vector ourCurCP = race.checkpoints[ourCurCPID];
+    float progress = race.distFromPrevCP(ourNextCPID) - Vector::dist(pod->pos, ourNextCP);
+    int i = ourCurCPID;
+    while(i != ourNextCPID) {
+        progress += PASS_CP_BONUS;
+        progress += sFactors.distToCP * race.distToNextCP(i);
+        i = race.followingCheckpoint(i);
+    }
+    return progress;
+}
 
-//    racerScore += 2*(pods[0]->vel.x * (nextCP.x - pods[0]->pos.x) + pods[0]->vel.y * (nextCP.y - pods[0]->pos.y)) / Vector::dist(nextCP, pods[0]->pos);
+static float timeFromDVA(float distance, float velocity, float acc) {
+    return (-velocity + sqrt(velocity*velocity - 2*acc*distance)) / acc;
+}
 
+static float sigmoid(float x) {
+    return x / (3*(1 + abs(x)));
+}
 
-//    float racerScore = (pods[0]->passedCheckpoints - podsPrev[0]->passedCheckpoints) * 15000 -
-//            (Vector::dist(nextCP, pods[0]->pos));// - Vector::dist(prevNextCP, podsPrev[0]->pos));
+float AnnealingBot::engagedScore(const PodState* bouncer, const PodState* target, const PodState* targetPrev) {
+    float score = 0;
+    int targetCP = target->nextCheckpoint;
+    Vector enemyCPDiff = race.checkpoints[target->nextCheckpoint] - target->pos;
+    Vector bouncerCPDiff = race.checkpoints[target->nextCheckpoint] - bouncer->pos;
+    Vector enemyBouncerDiff = bouncer->pos - target->pos;
+    float angleSeenByCP = 637.0f * (M_PI/2.0f - abs(physics.angleBetween(target->pos -race.checkpoints[targetCP], bouncer->pos-race.checkpoints[targetCP])));
+    float angleSeenByEnemy = 637.0f * (M_PI/2.0f - abs(physics.angleBetween(race.checkpoints[targetCP] - target->pos, bouncer->pos - target->pos)));
+    float bouncerTurnAngle = 637.0f * (M_PI/2.0f - abs(physics.turnAngle(*bouncer, target->pos)));
+    float enemyTurnAngle = 637.0f * (M_PI/2.0f - abs(physics.turnAngle(*target, bouncer->pos)));
+    float checkpointPenalty = target->passedCheckpoints > targetPrev->passedCheckpoints ? 1 : 0;
 
-//    nextCP = race.checkpoints[enemyPods[0]->nextCheckpoint];
-//    prevNextCP = race.checkpoints[enemyPodsPrev[0]->nextCheckpoint];
-//    float enemyRacerScore = (enemyPods[0]->passedCheckpoints - enemyPodsPrev[0]->passedCheckpoints)*15000 -
-//            5*(Vector::dist(nextCP, enemyPods[0]->pos) - Vector::dist(prevNextCP, enemyPodsPrev[0]->pos));
-//    racerScore -= enemyRacerScore;
-
-//    float chaserScore = -Vector::dist(nextCP, pods[1]->pos);
-//    chaserScore -=  Vector::dist(enemyPods[0]->pos, pods[1]->pos);
-//    chaserScore -= abs(physics.turnAngle(pods[1], enemyPods[0].pos));
-    float racerScore = -Vector::dist(pods[0]->pos, race.checkpoints[pods[0]->nextCheckpoint]) + 20000 * (pods[0]->passedCheckpoints - podsPrev[0]->passedCheckpoints);
-    racerScore -= 0.4*(-Vector::dist(enemyPods[0]->pos, race.checkpoints[enemyPods[0]->nextCheckpoint]) + 20000 * (enemyPods[0]->passedCheckpoints - enemyPodsPrev[0]->passedCheckpoints));
-    racerScore -= 0.5*(0.5*Vector::dist(enemyPods[0]->pos, pods[1]->pos) + Vector::dist(race.checkpoints[enemyPods[0]->nextCheckpoint], pods[1]->pos));
-//    return -(racerScore + 0.1*chaserScore);
-    return 100000-(racerScore);//+0.2*chaserScore);//+ 0.2*chaserScore);// + chaserScore);// + chaserScore);
+    score += sFactors.enemyDistToCP * enemyCPDiff.getLength() +
+            sFactors.bouncerDistToCP * bouncerCPDiff.getLength() +
+            sFactors.enemyDist * enemyBouncerDiff.getLength() +
+            sFactors.angleSeenByCP * angleSeenByCP +
+            sFactors.angleSeenByEnemy * angleSeenByEnemy +
+            sFactors.bouncerTurnAngle * bouncerTurnAngle +
+            sFactors.enemyTurnAngle * enemyTurnAngle +
+            sFactors.checkpointPenalty * checkpointPenalty;
+    return score;
 }
 
 void AnnealingBot::simulate(SimBot* pods1Sim, SimBot* pods2Sim, int turns, int startFromTurn) {
