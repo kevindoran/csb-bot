@@ -51,7 +51,7 @@ PodOutputAbs Navigation::turnSaturationAdjust(const PodState &pod, const PodOutp
 }
 
 PodOutputAbs Navigation::preemptSeek(const PodState &pod, Vector initialTarget, float radius, Vector nextTarget) {
-    // If we are on target within 5 turns, we will thrust towards the next CP. If we are not on target within 5 turns
+    // If we are on target within 5 TURNS, we will thrust towards the next CP. If we are not on target within 5 TURNS
     // but are on target within 6, turn towards the next CP without thrusting.
     int defaultTurn = 6;
     int defaultSwitch = 5;
@@ -114,7 +114,7 @@ Vector Navigation::find_intercept(const PodState &pod, const PodState &enemy) {
     float high = intercept_path.getLength();
     Vector midPoint;
     // TODO: hardcoded heuristic- convert to parameter and search for optimum.
-    // The difference in turns which is acceptable for the bots to arrive at the collision area.
+    // The difference in TURNS which is acceptable for the bots to arrive at the collision area.
     int close_enough = intercept_path.getLength() > 3000 ? 2 : 1;//max(1.0, intercept_path.getLength() / 1200);
     int ourTime = 0;
     int enemyTime = ourTime + close_enough + 1;
