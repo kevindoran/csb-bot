@@ -19,9 +19,9 @@ set(SOURCE_FILES
         Vector.cpp
         Navigation.cpp
         State.cpp
-        AnnealingBot.cpp
         Simulation.cpp
-        parameterSimMain.cpp)
+        parameterSimMain.cpp
+        )
 
 add_library(PodracerBot STATIC ${SOURCE_FILES} ${HEADER_FILES})
 

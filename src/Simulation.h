@@ -59,7 +59,7 @@ public:
             bothStates["p2pod2"] = toJson(player2Pod2[i]);
             turns.push_back(bothStates);
         }
-        game["TURNS"] = turns;
+        game["turns"] = turns;
         out << game;
     }
 };
@@ -94,6 +94,10 @@ class Simulation {
         return finished || otherPlayerTimeout;
     }
 
+    bool timeout(PodState pods[]) {
+        return pods[0].turnsSinceCP > 100 && pods[1].turnsSinceCP > 100;
+    }
+
 
     void stripAndCombine(PodState ourStates[], PodState enemyStates[], PlayerState out[]) {
         out[0].pods[0] = strip(ourStates[0]);
@@ -116,56 +120,145 @@ class Simulation {
 
 public:
     GameHistory history;
-    static const int TURN_LIMIT = 30;
+    static const int TURN_LIMIT = 250;
     Simulation(Race r) : race(r), physics(r), history(r.checkpoints){}
 
-    int parameterSim(PodState* pods[], ScoreFactors sFactors, bool printOut) {
-        State stateA(race);
-        State stateB(race);
-        PodState aPods[] = {*pods[0], *pods[1]};
-        PodState bPods[] = {*pods[2], *pods[3]};
+    int parameterSim(PodState aPods[], PodState bPods[], ScoreFactors sFactors, bool printOut) {
+        PodState* pods[] = {&aPods[0], &aPods[1], &bPods[0], &bPods[1]};
         for(int i = 0; i < TURN_LIMIT; i++) {
             if(printOut) {
                 history.recordTurn(*pods[0], *pods[1], *pods[2], *pods[3]);
             }
-            // If game over, return the number of turns.
-            if (victory(aPods, bPods) || victory(bPods, aPods)) {
+            // If game over (by aPods victory), return the number of turns.
+            if (aPods[0].passedCheckpoints == race.totalCPCount()) {
                 return i;
             }
             // Setup game data.
-            PlayerState forA[PLAYER_COUNT];
-            PlayerState forB[PLAYER_COUNT];
-            stripAndCombine(aPods, bPods, forA);
-            stripAndCombine(bPods, aPods, forB);
-            stateA.preTurnUpdate(forA);
-            stateB.preTurnUpdate(forB);
+            PlayerState forA[PLAYER_COUNT] = {PlayerState(aPods), PlayerState(bPods)};
+            PlayerState forB[PLAYER_COUNT] = {PlayerState(bPods), PlayerState(aPods)};
+            int turn = i+1; // skip first turn to avoid initialization which will reset out fake setup.
+            GameState aGS(race, forA, i+1);
+            GameState bGS(race, forB, i+1);
 
             // Train pod 1
-            PairOutput bouncerSolution[AnnealingBot::TURNS];
-            AnnealingBot bouncerBotFake(race, 40);
-            bouncerBotFake.train(stateA.game().enemyState().pods, stateA.game().ourState().pods, bouncerSolution);
+            PairOutput bouncerSolution[5];
+            AnnealingBot<5> bouncerBotFake(race, 40);
+            bouncerBotFake.sFactors.overallRacer = 0;
+            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution);
             CustomAIWithBackup bouncerAI(race, bouncerSolution, 0);
-            AnnealingBot racerBot(race, 90, &bouncerAI);
+            bouncerAI.setDefaultAfter(5);
+            AnnealingBot<6> racerBot(race, 80, &bouncerAI);
             // Disable bouncer.
             racerBot.sFactors.overallBouncer = 0;
 
             // Train pod 2
-            PairOutput racerSolution[AnnealingBot::TURNS];
-            AnnealingBot racerBotFake(race, 40);
-            racerBotFake.train(stateB.game().enemyState().pods, stateB.game().ourState().pods, racerSolution);
+            PairOutput racerSolution[5];
+            AnnealingBot<5> racerBotFake(race, 40);
+            racerBotFake.sFactors.overallBouncer = 0;
+            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution);
             CustomAIWithBackup racerAI(race, racerSolution, 0);
-            AnnealingBot bouncerBot(race, 90, &racerAI);
+            racerAI.setDefaultAfter(5);
+            AnnealingBot<6> bouncerBot(race, 80, &racerAI);
             bouncerBot.sFactors = sFactors;
             // Disable racer.
             bouncerBot.sFactors.overallRacer = 0;
 
             // Play the turn.
-            PairOutput aOut = racerBot.move(stateA.game());
-            PairOutput bOut = bouncerBot.move(stateB.game());
-            stateA.postTurnUpdate( aOut.o1.absolute(stateA.game().ourState().pods[0]),
-                                   aOut.o2.absolute(stateA.game().ourState().pods[1]));
-            stateB.postTurnUpdate( bOut.o1.absolute(stateB.game().ourState().pods[0]),
-                                   bOut.o2.absolute(stateB.game().ourState().pods[1]));
+            PairOutput aOut = racerBot.move(aGS);
+            PairOutput bOut = bouncerBot.move(bGS);
+            physics.apply(aPods, aOut);
+            physics.apply(bPods, bOut);
+            physics.simulate(pods);
+        }
+        return TURN_LIMIT;
+    }
+
+
+
+    float progressDiff(PodState aPods[], PodState bPods[]) {
+        int aLead = physics.leadPodID(aPods);
+        int bLead = physics.leadPodID(bPods);
+        float aProgress = progress(aPods[aLead]);
+        float bProgress = progress(bPods[bLead]);
+        return aProgress - bProgress;
+    }
+
+    float checkpointsToGo(PodState winner[]) {
+        int lead = physics.leadPodID(winner);
+        return race.totalCPCount() - winner[lead].passedCheckpoints;
+    }
+
+
+    static constexpr float CP_BONUS = 2000;
+    double progress(PodState& racer) {
+        double progress = 0;
+        for(int i = 1; i <= racer.passedCheckpoints; i++) {
+            int cpIdx = i % race.checkpoints.size();
+            progress += CP_BONUS;
+            progress += race.distFromPrevCP(cpIdx);
+        }
+        int curCPIdx = (racer.passedCheckpoints + 1) % race.checkpoints.size();
+        progress += race.distFromPrevCP(curCPIdx) - Vector::dist(racer.pos, race.checkpoints[curCPIdx]);
+        return progress;
+    }
+
+    static const int PROGRESS_LIMIT = 100000;
+    static const int SCORE_LIMIT =   1000000;
+    static const int EARLY_VICTORY_BONUS = 1000;
+    double fullGameParamSim(ScoreFactors sFactors, bool printOut) {
+        PodState aPods[POD_COUNT];
+        PodState bPods[POD_COUNT];
+        initializePods(aPods, bPods);
+        PodState* pods[] = {&aPods[0], &aPods[1], &bPods[0], &bPods[1]};
+        for(int i = 0; true;i++) {
+            if(printOut) {
+                history.recordTurn(*pods[0], *pods[1], *pods[2], *pods[3]);
+            }
+            double pdiff = progressDiff(bPods, aPods);
+            if (victory(aPods, bPods) || victory(bPods, aPods) || abs(pdiff) > PROGRESS_LIMIT) {
+                float score = pdiff;
+                if(pdiff > PROGRESS_LIMIT || timeout(bPods)) {
+                    score += EARLY_VICTORY_BONUS * checkpointsToGo(bPods);
+                } else if(pdiff < -PROGRESS_LIMIT || timeout(aPods)) {
+                    score -= EARLY_VICTORY_BONUS * checkpointsToGo(aPods);
+                }
+                if(score > SCORE_LIMIT) {
+                    cerr << "Score limit reached at: " << score << endl;
+                    score = 0;
+                }
+                return score;
+            }
+
+            // Setup game data.
+            PlayerState forA[PLAYER_COUNT] = {PlayerState(aPods), PlayerState(bPods)};
+            PlayerState forB[PLAYER_COUNT] = {PlayerState(bPods), PlayerState(aPods)};
+            int turn = i+1; // skip first turn to avoid initialization which will reset out fake setup.
+            GameState aGS(race, forA, i+1);
+            GameState bGS(race, forB, i+1);
+
+            // Train pod 1
+            PairOutput bouncerSolution[5];
+            AnnealingBot<5> bouncerBotFake(race, 30);
+            bouncerBotFake.isControl = true;
+            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution);
+            CustomAIWithBackup bouncerAI(race, bouncerSolution, 0);
+            bouncerAI.setDefaultAfter(5);
+            AnnealingBot<6> racerBot(race, 70, &bouncerAI);
+            racerBot.isControl = true;
+
+            // Train pod 2
+            PairOutput racerSolution[5];
+            AnnealingBot<5> racerBotFake(race, 30);
+            racerBotFake.sFactors = sFactors;
+            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution);
+            CustomAIWithBackup racerAI(race, racerSolution, 0);
+            racerAI.setDefaultAfter(5);
+            AnnealingBot<6> bouncerBot(race, 70, &racerAI);
+            bouncerBot.sFactors = sFactors;
+
+            // Play the turn.
+            PairOutput aOut = racerBot.move(aGS);
+            PairOutput bOut = bouncerBot.move(bGS);
             physics.apply(aPods, aOut);
             physics.apply(bPods, bOut);
             physics.simulate(pods);
@@ -183,7 +276,7 @@ public:
         State stateA(race);
         State stateB(race);
         for(int i = 0; i < TURN_LIMIT; i++) {
-            a = new AnnealingBot(race, 140);
+            a = new AnnealingBot<6>(race, 140);
             history.recordTurn(*pods[0], *pods[1], *pods[2], *pods[3]);
 
             if (victory(aPods, bPods) || victory(bPods, aPods)) {
