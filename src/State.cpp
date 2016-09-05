@@ -12,7 +12,7 @@ PodOutputSim PodOutputSim::fromAbsolute(const PodState& pod, const PodOutputAbs&
 }
 
 PodOutputAbs PodOutputSim::absolute(const PodState& pod) {
-    Vector target = pod.pos + Vector::fromMagAngle(1000, pod.angle + angle);
+    Vector target = pod.pos + Vector::fromMagAngle(10000, pod.angle + angle);
     PodOutputAbs po(thrust, target);
     if(shieldEnabled) po.enableShield();
     else if(boostEnabled) po.enableBoost();
