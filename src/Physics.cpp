@@ -28,8 +28,8 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
             control.thrust = 0;
         }
         Vector force = Vector::fromMagAngle(control.thrust, pod.angle);
-        pod.vel.x = (int) (pod.vel.x + force.x);
-        pod.vel.y = (int) (pod.vel.y + force.y);
+        pod.vel.x = pod.vel.x + force.x;
+        pod.vel.y = pod.vel.y + force.y;
     }
 }
 
@@ -60,6 +60,7 @@ bool PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race, PassedCh
     if(time == -1) return false;
     else {
         *event = PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
+        return true;
     }
 }
 
@@ -86,7 +87,7 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
     bool occurred = false;
     Collision collision;
     while(time < 1) {
-        for (int i = 0; i < POD_COUNT*2 - 1; i++) {
+        for (int i = 0; i < POD_COUNT*2; i++) {
             // Collision or checkpoint passing first?
             for (int j = i + 1; j < POD_COUNT*2; j++) {
                 // Shortcut for performance: the previous two to collide can't collide next.
@@ -199,9 +200,10 @@ void Collision::resolve() {
     b->vel += impactNormal * (1/m2);
     // There is a half impulse minimum of 120 (stated game mechanics).
     float impulse = impactNormal.getLength();
-    // TODO: The time() !=0 check is might be faulty, however, it was included to prevent
-    // infinite bouncing caused by overlaps.
-    if(impulse < 120.0 && time() != 0) {
+    // We ignore the min impulse rule for cases where the objects intersected
+    // and have very little relative velocity. There is a decent chance that these
+    // objects didn't touch.
+    if(impulse < 120.0 && !(time() == 0 && relativeVel.getLengthSq() < 2)) {
         impactNormal *= 120.0 / impulse;
     }
     a->vel -= impactNormal * (1/m1);
