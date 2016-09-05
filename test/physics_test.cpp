@@ -204,8 +204,11 @@ TEST_F(PhysicsTest, passed_circle_at) {
     passed = physics->passedCheckpoint(Vector(0, 600), Vector(3000, 600), checkpoint);
     EXPECT_FALSE(passed);
 
-    passed = physics->passedCheckpoint(Vector(0, 550), Vector(3000, 550), checkpoint);
+    passed = physics->passedCheckpoint(Vector(0, 601), Vector(3000, 601), checkpoint);
     EXPECT_FALSE(passed);
+
+    passed = physics->passedCheckpoint(Vector(0, 550), Vector(3000, 550), checkpoint);
+    EXPECT_TRUE(passed);
 
     passed = physics->passedCheckpoint(Vector(0, 0), Vector(1600, 0), checkpoint);
     EXPECT_FALSE(passed);
