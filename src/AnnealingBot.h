@@ -171,7 +171,7 @@ class AnnealingBot : public DuelBot {
 public:
 //    static const int TURNS = 6;
     ScoreFactors sFactors = defaultFactors;
-    bool isControl = true;
+    bool isControl = false;
 private:
     static constexpr float maxScore = 70000;
     static constexpr float minScore = 1000;
