@@ -73,7 +73,7 @@ struct PodState {
     Vector pos;
     Vector vel;
     // In radians
-    float angle;
+    float angle = 0;
     bool shieldEnabled = false;
     int nextCheckpoint = 1;
     int passedCheckpoints = 0;
