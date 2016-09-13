@@ -93,7 +93,7 @@ public:
      */
     void move(PodState* ourPods, PodState* enemyPods) {
         // Racer
-        Vector drift = ourPods[0].vel * 4;
+        Vector drift = ourPods[0].vel * 3.5;
         Vector target = race.checkpoints[ourPods[0].nextCheckpoint] - drift;
         float turnAngle = physics.turnAngle(ourPods[0], target);
         Vector force;
@@ -115,7 +115,7 @@ public:
         float targetx;
         float targety;
         if((target.x - ourPods[1].pos.x)*(target.x - ourPods[1].pos.x) + (target.y - ourPods[1].pos.y) * (target.y - ourPods[1].pos.y) >
-                (target.x - enemyPods[0].pos.x)*(target.x - enemyPods[0].pos.x) + (target.y - enemyPods[0].pos.y)*(target.y - enemyPods[0].pos.y)) {
+           (target.x - enemyPods[0].pos.x)*(target.x - enemyPods[0].pos.x) + (target.y - enemyPods[0].pos.y)*(target.y - enemyPods[0].pos.y)) {
             int nextNextCPID = race.followingCheckpoint(enemyPods[0].nextCheckpoint);
             targetx = race.checkpoints[nextNextCPID].x;
             targety = race.checkpoints[nextNextCPID].y;
@@ -169,21 +169,20 @@ public:
 template<int TURNS>
 class AnnealingBot : public DuelBot {
 public:
-//    static const int TURNS = 6;
     ScoreFactors sFactors = defaultFactors;
     bool isControl = false;
 private:
-    static constexpr float maxScore = 70000;
-    static constexpr float minScore = 1000;
+    static constexpr float maxScore = 300000;//numeric_limits<float>::infinity();
+    static constexpr float minScore = 1000;//-numeric_limits<float>::infinity();
     // Loop control and timing.
     static const int reevalPeriodMilli = 4;
     static const int timeBufferMilli = 1;
-    static constexpr float startTemp = 1;
-    static constexpr float minTemperature = 1.0 * pow(0.945, 160);
+    static constexpr float startTemp = 900;
+    static constexpr float minTemperature = 900 * pow(0.945, 160);
     static constexpr float K = 0.01;//215.265;//203080;//0.01; // Boltzman's constant.
-    static constexpr float stepsVsCoolRatio = 1.6;
-    static const int initCoolingSteps = 90;
-    static const int initStepsPerTemp = 150;
+    static constexpr float stepsVsCoolRatio = 1.3;
+    static const int initCoolingSteps = 110;
+    static const int initStepsPerTemp = 140;
     long long startTime;
     static const int UNSET = -1;
     long allocatedTime = UNSET;
@@ -480,7 +479,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
 #endif
             delta = updated_score - currentScore;
             if(delta > 0) diffSum += delta;
-            exponent = (-delta /currentScore) / (K * currentTemp);
+            exponent = (-delta /*/currentScore*/) / (K * currentTemp);
             merit = exp(exponent);
             if(merit > 1.0) {
                 merit = 0.0;
@@ -570,13 +569,7 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
         chaserScore -=  0.3*Vector::dist(pods[0]->pos, pods[1]->pos);
         chaserScore += 0.3*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
     } else {
-        PodState altered = *enemyPods[0];
-        if(Vector::distSq(podsPrev[1]->pos, race.checkpoints[enemyPodsPrev[0]->nextCheckpoint]) > Vector::distSq(enemyPodsPrev[0]->pos, race.checkpoints[enemyPodsPrev[0]->nextCheckpoint])) {
-            if(enemyPods[0]->nextCheckpoint == enemyPodsPrev[0]->nextCheckpoint) {
-                altered.nextCheckpoint = race.followingCheckpoint(enemyPods[0]->nextCheckpoint);
-            }
-        }
-        chaserScore = bouncerScore(pods[1], &altered, enemyPodsPrev[0]);
+        chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
     }
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
     return score;
@@ -634,7 +627,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
              sFactors.checkpointPenalty * checkpointPenalty;
 
     // Test
-    score -= max(0, 3-bouncer->turnsSinceShield) * 600;
+    score -= max(0, 6-bouncer->turnsSinceShield) * 600;
     return score;
 }
 
@@ -694,5 +687,4 @@ void AnnealingBot<TURNS>::simulate(SimBot* pods1Sim, SimBot* pods2Sim, int turns
         physics.simulate(allPods);
     }
 }
-
 #endif //CODERSSTRIKEBACKC_ANNEALINGBOT_H
