@@ -653,6 +653,16 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
 
     // Test
     score += max(0, 6-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
+    if(!(score <= 0 || score >= 0)) {
+        cerr << "NaN for bouncer score." << endl;
+        cerr << "angleSeenByCP" << angleSeenByCP << endl;
+        cerr << "angleSeenByEnemy" << angleSeenByEnemy << endl;
+        cerr << "bouncerTurnAngle" << bouncerTurnAngle << endl;
+        cerr << "enemyTurnAngle" << enemyTurnAngle << endl;
+        cerr << "enemyCPDiff" << enemyCPDiff.getLength() << endl;
+        cerr << "bouncerCPDiff" << bouncerCPDiff.getLength() << endl;
+        cerr << "enemyBouncerDiff" << enemyBouncerDiff.getLength() << endl;
+    }
     return score;
 }
 
