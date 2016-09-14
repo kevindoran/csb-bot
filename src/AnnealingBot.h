@@ -31,6 +31,7 @@ struct ScoreFactors {
     float bouncerTurnAngle;
     float enemyTurnAngle;
     float checkpointPenalty;
+    float shieldPenalty;
 };
 
 static ScoreFactors defaultFactors = {
@@ -46,7 +47,8 @@ static ScoreFactors defaultFactors = {
         -0.331,  // angleSeenByEnemy
         -1.37,  // bouncerTurnAngle
         -1.28,  // enemyTurn angle
-        -4000
+        -4000   // checkpoint penalty
+        -600   // shield penalty
 };
 
 
@@ -177,11 +179,12 @@ private:
     // Loop control and timing.
     static const int reevalPeriodMilli = 4;
     static const int timeBufferMilli = 1;
-    static constexpr float startTemp = 900;
-    static constexpr float minTemperature = 900 * pow(0.945, 160);
-    static constexpr float K = 0.01;//215.265;//203080;//0.01; // Boltzman's constant.
+    static constexpr float initTemp = 10.0;
+    static constexpr float initCoolingFraction = 0.95;
+    static constexpr float startAcceptanceRate = 0.98;
+    static constexpr float endAcceptanceRate = 0.02;
     static constexpr float stepsVsCoolRatio = 1.3;
-    static const int initCoolingSteps = 110;
+    static const int initCoolingSteps = 160;
     static const int initStepsPerTemp = 140;
     long long startTime;
     static const int UNSET = -1;
@@ -196,9 +199,12 @@ private:
     int coolingSteps = initCoolingSteps;
     int coolingIdx = 0;
     int stepsPerTemp = initStepsPerTemp;
-    float currentTemp = startTemp;
+    float currentTemp = initTemp;
     float coolingFraction = UNSET;//initCoolingFraction;
     bool toDeleteEnemy = false;
+    // SD & mean
+    float mean;
+    double M2;
 
 
     Race race;
@@ -236,6 +242,8 @@ private:
             coolingSteps = 0;
             stepsPerTemp = 0;
         } else if (elapsed > reevalPeriodMilli) {
+            // The update timer has elapsed, or we are on our second loop, so need to create a better estimate of
+            // start temp, end temp and cooling fraction.
             lastUpdateTime = timeNow;
             float simRate = simsSinceUpdate / elapsed;
             int simsRemaining = simRate * timeRemaining;
@@ -243,7 +251,7 @@ private:
             // A = sqrt(C/2)
             coolingSteps = sqrt((simCount + simsRemaining) / (stepsVsCoolRatio));
             stepsPerTemp = coolingSteps * stepsVsCoolRatio;
-//            coolingFraction = pow(minTemperature/currentTemp, 1.0/(coolingSteps - coolingIdx));
+
 //            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
             tunnelCount = 0;
             nonTunnelCount = 0;
@@ -252,15 +260,25 @@ private:
 //            cerr << "Cooling steps: " << coolingSteps << endl;
 //            cerr << "Steps per temp: " << stepsPerTemp << endl;
         }
+        if(elapsed > reevalPeriodMilli || coolingIdx == 1) {
+            // T0 = -sd/ln(startAcceptanceRate)    [from startAcceptanceRate = exp(-sd/T0)]
+            float SD = sqrt(M2/simCount);
+//            cerr << "SD: " << SD << endl;
+            float startTemp = -SD/log(startAcceptanceRate);
+            float endTemp = -SD/log(endAcceptanceRate);
+            coolingFraction = pow(endTemp/startTemp, 1.0/(coolingSteps));
+            currentTemp = startTemp*pow(coolingFraction, coolingIdx);
+//            cerr << "Cooling steps: " << coolingSteps;
+//            cerr << "Cooling Fraction: " << coolingFraction << endl;
+        }
     }
 
     void init() {
         startTime = getTimeMilli();
         lastUpdateTime = startTime;
-        currentTemp = startTemp;
-//        coolingSteps = initCoolingSteps;
-        coolingSteps = allocatedTime == UNSET ? 160 : allocatedTime * 1.2;
-        coolingFraction = pow(minTemperature/currentTemp, 1.0/coolingSteps);
+        currentTemp = initTemp;
+        coolingSteps = allocatedTime == UNSET ? initCoolingSteps : allocatedTime * 1.2;
+        coolingFraction = initCoolingFraction;
         stepsPerTemp = initStepsPerTemp;
         simCount = 0;
         tunnelCount = 0;
@@ -447,19 +465,19 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
     }
     float currentScore = score(solution, 0);
     float bestScore = currentScore;
-#ifdef SIMOUT
-    cout << currentScore << ", ";
-#endif
     float updated_score;
     float startScore;
     float delta;
     int toEdit = 0;
     PairOutput saved;
     PairOutput best[TURNS];
+    // SD & mean
+    mean = currentScore;
+    float d = 0;
+    M2 = 0;
 
-    for(coolingIdx = 1; coolingIdx <= coolingSteps; coolingIdx++) {
+    for(; coolingIdx <= coolingSteps; coolingIdx++) {
         updateLoopControl();
-        currentTemp *= coolingFraction;
         startScore = currentScore;
         for(int j = 1; j <= stepsPerTemp; j++) {
             // Make edits to one turn of solution.
@@ -467,6 +485,18 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             saved = solution[toEdit];
             randomEdit(solution[toEdit]);//, TURNS - toEdit, ((float)coolingIdx)/coolingSteps);
             updated_score =  score(solution, toEdit);
+            // Stats
+            d = updated_score - mean;
+            // simCount is updated at the end of the loop, so need to add 1 here.
+            mean += d / (simCount+1);
+            M2 += d * (updated_score - mean);
+            if(!(M2 >= 0 || M2 <= 0)) {
+                cerr << "Updated score: " << updated_score << endl;
+                cerr << "M2: " << M2 << endl;
+                cerr << "Sim count: " << simCount << endl;
+                cerr << "Mean: " << mean << endl;
+                cerr << "d: " << d << endl;
+            }
             if(updated_score < 0) {
                 cerr << "Score below zero  " << updated_score << endl;
             }
@@ -474,12 +504,9 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
                 bestScore = updated_score;
                 memcpy(best, solution, TURNS * sizeof(PairOutput));
             }
-#ifdef SIMOUT
-            cout << updated_score << ", ";
-#endif
             delta = updated_score - currentScore;
             if(delta > 0) diffSum += delta;
-            exponent = (-delta /*/currentScore*/) / (K * currentTemp);
+            exponent = (-delta /*/currentScore*/) / (currentTemp);
             merit = exp(exponent);
             if(merit > 1.0) {
                 merit = 0.0;
@@ -505,6 +532,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             currentTemp /= coolingFraction;
         }
         coolCount++;
+        currentTemp *= coolingFraction;
     }
 //    cerr << "End score: " << currentScore << endl;
 //    cerr << "Sim count:" << simCount << endl;
@@ -513,9 +541,6 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
 //    cerr << "Current (pos, vel)   " << podsToTrain[0].pos << "   " << podsToTrain[0].vel << endl;
 //    cerr << "Moving: (thrust, angle)  " << " (" << solution[0].o1.thrust << ", " << physics.radToDegrees(solution[0].o1.angle) << ")   " << endl
 //         << "Expecting state: (pos, vel, cp)   " << next.pos << "   " << next.vel << "   " << next.nextCheckpoint << endl;
-#ifdef SIMOUT
-    cout << endl;
-#endif
     memcpy(previousSolution, solution, TURNS*sizeof(PairOutput));
     hasPrevious = true;
 }
@@ -627,7 +652,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
              sFactors.checkpointPenalty * checkpointPenalty;
 
     // Test
-    score -= max(0, 6-bouncer->turnsSinceShield) * 600;
+    score += max(0, 6-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
     return score;
 }
 
