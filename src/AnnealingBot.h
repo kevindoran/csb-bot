@@ -36,19 +36,19 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        2000, // passCPBonus
-        1.16,    // progressToCP
-        -0.456, // enemyProgress
+        1789, // passCPBonus
+        1.70,    // progressToCP
+        -0.176, // enemyProgress
         1,    // overallBouncer
-        -0.4, // enemyDist
-        1.17, // enemyDistToCP
-        -1.8,  // bouncerDistToCP
-        -1.93,  // angleSeenByCP
-        -0.331,  // angleSeenByEnemy
-        -1.37,  // bouncerTurnAngle
-        -1.28,  // enemyTurn angle
-        -4000   // checkpoint penalty
-        -600   // shield penalty
+        -0.079, // enemyDist
+        0.119, // enemyDistToCP
+        -0.928,  // bouncerDistToCP
+        -0.332,  // angleSeenByCP
+        -0.240,  // angleSeenByEnemy
+        -0.785,  // bouncerTurnAngle
+        -0.669,  // enemyTurn angle
+        -74   // checkpoint penalty
+        -390   // shield penalty
 };
 
 
@@ -475,6 +475,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
     mean = currentScore;
     float d = 0;
     M2 = 0;
+    float meanPrev;
 
     for(; coolingIdx <= coolingSteps; coolingIdx++) {
         updateLoopControl();
@@ -488,6 +489,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             // Stats
             d = updated_score - mean;
             // simCount is updated at the end of the loop, so need to add 1 here.
+            meanPrev = mean;
             mean += d / (simCount+1);
             M2 += d * (updated_score - mean);
             if(!(M2 >= 0 || M2 <= 0)) {
@@ -496,6 +498,8 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
                 cerr << "Sim count: " << simCount << endl;
                 cerr << "Mean: " << mean << endl;
                 cerr << "d: " << d << endl;
+                M2 = 0;
+                mean = meanPrev;
             }
             if(updated_score < 0) {
                 cerr << "Score below zero  " << updated_score << endl;
@@ -597,6 +601,9 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
         chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
     }
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
+    if(!(score <= 0 || score >= 0)) {
+        cerr << "Score NaN, but from where?" << endl;
+    }
     return score;
 }
 
@@ -614,6 +621,9 @@ float AnnealingBot<TURNS>::progress(const PodState* pod, const PodState* previou
         progress += sFactors.passCPBonus;
         progress += sFactors.progressToCP * race.distFromPrevCP(i);
         i = race.followingCheckpoint(i);
+    }
+    if(!(progress <= 0 || progress >= 0)) {
+        cerr << "Progress NaN: " << progress << endl;
     }
     return progress;
 }
@@ -633,10 +643,10 @@ template<int TURNS>
 float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState *target, const PodState *targetPrev) {
     float score = 0;
     int targetCP = target->nextCheckpoint;
-    Vector enemyCPDiff = race.checkpoints[target->nextCheckpoint] - target->pos;
-    Vector bouncerCPDiff = race.checkpoints[target->nextCheckpoint] - bouncer->pos;
+    Vector enemyCPDiff = target->pos - race.checkpoints[target->nextCheckpoint];
+    Vector bouncerCPDiff = bouncer->pos - race.checkpoints[target->nextCheckpoint];
     Vector enemyBouncerDiff = bouncer->pos - target->pos;
-    float angleSeenByCP = 637.0f * (abs(physics.angleBetween(target->pos -race.checkpoints[targetCP], bouncer->pos-race.checkpoints[targetCP])) - M_PI/2.0f);
+    float angleSeenByCP = bouncerCPDiff.getLength() == 0 ? 0 : 637.0f * (abs(physics.angleBetween(enemyCPDiff, bouncerCPDiff)) - M_PI/2.0f);
     float angleSeenByEnemy = 637.0f * (abs(physics.angleBetween(race.checkpoints[targetCP] - target->pos, bouncer->pos - target->pos)) - M_PI/2.0f);
     float bouncerTurnAngle = 637.0f * (abs(physics.turnAngle(*bouncer, target->pos)) - M_PI/2.0f);
     float enemyTurnAngle = 637.0f * (abs(physics.turnAngle(*target, bouncer->pos)) - M_PI/2.0f);
@@ -655,13 +665,15 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     score += max(0, 6-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
     if(!(score <= 0 || score >= 0)) {
         cerr << "NaN for bouncer score." << endl;
-        cerr << "angleSeenByCP" << angleSeenByCP << endl;
-        cerr << "angleSeenByEnemy" << angleSeenByEnemy << endl;
-        cerr << "bouncerTurnAngle" << bouncerTurnAngle << endl;
-        cerr << "enemyTurnAngle" << enemyTurnAngle << endl;
-        cerr << "enemyCPDiff" << enemyCPDiff.getLength() << endl;
-        cerr << "bouncerCPDiff" << bouncerCPDiff.getLength() << endl;
-        cerr << "enemyBouncerDiff" << enemyBouncerDiff.getLength() << endl;
+        cerr << "angleSeenByCP " << angleSeenByCP << endl;
+        cerr << "angleSeenByEnemy " << angleSeenByEnemy << endl;
+        cerr << "bouncerTurnAngle"  << bouncerTurnAngle << endl;
+        cerr << "enemyTurnAngle " << enemyTurnAngle << endl;
+        cerr << "enemyCPDiff " << enemyCPDiff.getLength() << endl;
+        cerr << "bouncerCPDiff " << bouncerCPDiff.getLength() << endl;
+        cerr << "enemyBouncerDiff " << enemyBouncerDiff.getLength() << endl;
+        cerr << "bouncer pos " << bouncer->pos << endl;
+        cerr << "target pos " << target->pos << endl;
     }
     return score;
 }
