@@ -409,12 +409,19 @@ bool Physics::orderByProgress(PodState pods[]) {
     return false;
 }
 
+inline float safeAcos(float arg) {
+    if(arg < -1.0) arg = -1.0f;
+    else if(arg > 1.0) arg = 1.0f;
+    return acos(arg);
+}
+
 float Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
     // This method is a bottleneck, so using Vector is avoided.
     float diffX = toPoint.x - fromPoint.x;
     float diffY = toPoint.y - fromPoint.y;
     float length = sqrt(diffX*diffX + diffY*diffY);
-    float angle = acos(diffX / length);
+    float angle = safeAcos(diffX / length);
+//    float angle = acos(diffX / length);
     if(diffY < 0) {
         angle = 2 * M_PI - angle;
     }
@@ -422,7 +429,8 @@ float Physics::angleTo(const Vector& fromPoint, const Vector& toPoint) {
 }
 
 float Physics::angleBetween(const Vector& from, const Vector& to) {
-    float angle = acos(from.dotProduct(to) / (float) (from.getLength() * to.getLength()));
+//    float angle = acos(from.dotProduct(to) / (float) (from.getLength() * to.getLength()));
+    float angle = safeAcos(from.dotProduct(to) / (float) (from.getLength() * to.getLength()));
     if(to.y < from.y) {
         angle = 2 * M_PI - angle;
     }
