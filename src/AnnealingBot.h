@@ -36,18 +36,18 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        1789, // passCPBonus
+        5701, // passCPBonus
         1.70,    // progressToCP
-        -0.176, // enemyProgress
+        -0.886, // enemyProgress
         1,    // overallBouncer
         -0.079, // enemyDist
-        0.119, // enemyDistToCP
-        -0.928,  // bouncerDistToCP
-        -0.332,  // angleSeenByCP
-        -0.240,  // angleSeenByEnemy
-        -0.785,  // bouncerTurnAngle
-        -0.669,  // enemyTurn angle
-        -74   // checkpoint penalty
+        1.93, // enemyDistToCP
+        -1.86,  // bouncerDistToCP
+        -1.33,  // angleSeenByCP
+        -0.084,  // angleSeenByEnemy
+        -1.73,  // bouncerTurnAngle
+        -1.15,  // enemyTurn angle
+        -1581   // checkpoint penalty
         -390   // shield penalty
 };
 
