@@ -98,7 +98,7 @@ class PassedCheckpoint : public Event {
     PassedCheckpoint(PodState& pod, float time, int nextCP) : mPod(&pod), mTime(time), mNextCheckpoint(nextCP) {}
 public:
     PassedCheckpoint() {}
-    bool static testForPassedCheckpoint(PodState& a, Race& r, PassedCheckpoint* event);
+    bool static testForPassedCheckpoint(PodState& a, Race& r, PassedCheckpoint* event, bool isEnemy);
 
     float time() const {return mTime;}
     void resolve();

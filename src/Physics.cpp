@@ -54,9 +54,10 @@ void Physics::apply(PodState& pod, const PodOutputAbs& control) {
     apply(pod, po);
 }
 
-bool PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race, PassedCheckpoint* event) {
+bool PassedCheckpoint::testForPassedCheckpoint(PodState& a, Race& race, PassedCheckpoint* event, bool isEnemy) {
+    float CP_BUFFER = isEnemy ? 0 : -15;
     float time = Physics::passedCircleAt(a.pos.x, a.pos.y, a.pos.x + a.vel.x, a.pos.y + a.vel.y,
-                 race.checkpoints[a.nextCheckpoint].x, race.checkpoints[a.nextCheckpoint].y, CHECKPOINT_RADIUS);
+                 race.checkpoints[a.nextCheckpoint].x, race.checkpoints[a.nextCheckpoint].y, CHECKPOINT_RADIUS + CP_BUFFER);
     if(time == -1) return false;
     else {
         *event = PassedCheckpoint(a, time, race.followingCheckpoint(a.nextCheckpoint));
@@ -107,7 +108,7 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
                 }
             }
             // Can optimize by keeping list of pc events and resolving all those before the earliest collision.
-            occurred = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race, &cpEvent);
+            occurred = PassedCheckpoint::testForPassedCheckpoint(*pods[i], race, &cpEvent, 1 > 1);
             if (occurred && cpEvent.time() + time < 1.0) {
                 pCPEvents.push_back(cpEvent);
             }
