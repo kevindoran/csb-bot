@@ -410,8 +410,8 @@ bool Physics::orderByProgress(PodState pods[]) {
 }
 
 inline float safeAcos(float arg) {
-    if(arg < -1.0) arg = -1.0f;
-    else if(arg > 1.0) arg = 1.0f;
+    if(arg <= -1.0f) arg = -1.0f;
+    else if(arg >= 1.0f) arg = 1.0f;
     return acos(arg);
 }
 
