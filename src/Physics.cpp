@@ -16,6 +16,7 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
         pod.shieldEnabled = true;
         pod.turnsSinceShield = 0;
     } else {
+        pod.shieldEnabled = false;
         if(pod.turnsSinceShield <= SHIELD_COOLDOWN) {
             control.thrust = 0;
         } else if(pod.boostAvailable && control.boostEnabled) {
@@ -30,6 +31,7 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
         Vector force = Vector::fromMagAngle(control.thrust, pod.angle);
         pod.vel.x = pod.vel.x + force.x;
         pod.vel.y = pod.vel.y + force.y;
+        pod.vel.resetLengths();
     }
 }
 
@@ -144,6 +146,8 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         // to reality. In addition, rounding is a non-insignificant performance cost.
         pods[i]->pos.x = (int) pods[i]->pos.x;//round(pods[i]->pos.x);
         pods[i]->pos.y = (int) pods[i]->pos.y;//round(pods[i]->pos.y);
+        pods[i]->pos.resetLengths();
+        pods[i]->vel.resetLengths();
     }
 }
 

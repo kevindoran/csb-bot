@@ -111,6 +111,7 @@ public:
         }
         ourPods[0].vel.x += force.x;
         ourPods[0].vel.y += force.y;
+        ourPods[0].vel.resetLengths();
         ourPods[0].angle += turnAngle;
 
         // Bouncer
@@ -137,6 +138,7 @@ public:
         }
         ourPods[1].vel.x += force.x;
         ourPods[1].vel.y += force.y;
+        ourPods[1].vel.resetLengths();
         ourPods[1].angle += turnAngle;
     };
 };
