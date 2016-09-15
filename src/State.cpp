@@ -30,8 +30,6 @@ void State::preTurnUpdate(PlayerState playerStates[]) {
                 playerStates[i].pods[p].passedCheckpoints = previous.playerStates[i].pods[p].passedCheckpoints;
                 playerStates[i].pods[p].turnsSinceCP = previous.playerStates[i].pods[p].turnsSinceCP;
                 playerStates[i].pods[p].turnsSinceShield = previous.playerStates[i].pods[p].turnsSinceShield + 1;
-                // Boost is always available, but has 3 turn cooldown.
-                playerStates[i].pods[p].boostAvailable = true; // previous.playerStates[i].pods[p].boostAvailable;
                 int previousCP = previous.playerStates[i].pods[p].nextCheckpoint;
                 int currentCP = playerStates[i].pods[p].nextCheckpoint;
                 int passedCount;

@@ -15,15 +15,15 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
     if(control.shieldEnabled) {
         pod.shieldEnabled = true;
         pod.turnsSinceShield = 0;
+        return;
     } else {
         pod.shieldEnabled = false;
         if(pod.turnsSinceShield <= SHIELD_COOLDOWN) {
-            control.thrust = 0;
+            return;
         } else if(pod.boostAvailable && control.boostEnabled) {
             control.thrust = BOOST_ACC;
             pod.boostAvailable = false;
-        }
-        else if(control.thrust > MAX_THRUST) {
+        } else if(control.thrust > MAX_THRUST) {
             control.thrust = MAX_THRUST;
         } else if(control.thrust < 0) {
             control.thrust = 0;
