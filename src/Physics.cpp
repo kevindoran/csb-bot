@@ -11,7 +11,7 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
     if(abs(control.angle) > MAX_ANGLE) {
         control.angle = control.angle < -MAX_ANGLE ? -MAX_ANGLE : MAX_ANGLE;
     }
-    pod.angle += control.angle;
+    pod.addAngle(control.angle);
     if(control.shieldEnabled) {
         pod.shieldEnabled = true;
         pod.turnsSinceShield = 0;
@@ -36,7 +36,7 @@ void Physics::apply(PodState& pod, PodOutputSim control) {
 }
 
 void Physics::applyWithoutChecks(PodState& pod, const PodOutputSim& control) {
-    pod.angle += control.angle;
+    pod.addAngle(control.angle);
     if(control.shieldEnabled) {
         pod.shieldEnabled = true;
     } else {
@@ -234,6 +234,8 @@ Vector Physics::forceFromTarget(const PodState& pod, Vector target, float thrust
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
     else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
     float newAngle = pod.angle + angle;
+    if(newAngle >= 2*M_PI) newAngle -= 2*M_PI;
+    else if(newAngle < 0) newAngle += 2*M_PI;
     Vector force = Vector::fromMagAngle(thrust, newAngle);
     return force;
 }
@@ -244,6 +246,8 @@ PodState Physics::move(const PodState& pod, const PodOutputAbs& control, float t
     if(angle < - MAX_ANGLE) angle = -MAX_ANGLE;
     else if(angle > MAX_ANGLE) angle = MAX_ANGLE;
     float newAngle = pod.angle + angle;
+    if(newAngle >= 2*M_PI) newAngle -= 2*M_PI;
+    else if(newAngle < 0) newAngle += 2*M_PI;
     Vector force = Vector::fromMagAngle(control.thrust, newAngle);
     Vector newSpeed = (pod.vel + force); //* DRAG; Drag should be applied after moving.
     Vector pos = pod.pos + newSpeed * time;

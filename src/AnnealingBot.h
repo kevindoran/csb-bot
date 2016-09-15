@@ -112,7 +112,7 @@ public:
         ourPods[0].vel.x += force.x;
         ourPods[0].vel.y += force.y;
         ourPods[0].vel.resetLengths();
-        ourPods[0].angle += turnAngle;
+        ourPods[0].addAngle(turnAngle);
 
         // Bouncer
         float targetx;
@@ -139,7 +139,7 @@ public:
         ourPods[1].vel.x += force.x;
         ourPods[1].vel.y += force.y;
         ourPods[1].vel.resetLengths();
-        ourPods[1].angle += turnAngle;
+        ourPods[1].addAngle(turnAngle);
     };
 };
 
@@ -649,8 +649,9 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     Vector enemyCPDiff = target->pos - race.checkpoints[target->nextCheckpoint];
     Vector bouncerCPDiff = bouncer->pos - race.checkpoints[target->nextCheckpoint];
     Vector enemyBouncerDiff = bouncer->pos - target->pos;
-    float angleSeenByCP = bouncerCPDiff.getLength() == 0 ? 0 : 637.0f * (abs(physics.angleBetween(enemyCPDiff, bouncerCPDiff)) - M_PI/2.0f);
-    float angleSeenByEnemy = 637.0f * (abs(physics.angleBetween(race.checkpoints[targetCP] - target->pos, bouncer->pos - target->pos)) - M_PI/2.0f);
+    static const int TOO_CLOSE = 50;
+    float angleSeenByCP = bouncerCPDiff.getLength() <= TOO_CLOSE ? 0 : 637.0f * (abs(physics.angleBetween(enemyCPDiff, bouncerCPDiff)) - M_PI/2.0f);
+    float angleSeenByEnemy = bouncerCPDiff.getLength() <= TOO_CLOSE ? 0 : 637.0f * (abs(physics.angleBetween(race.checkpoints[targetCP] - target->pos, bouncer->pos - target->pos)) - M_PI/2.0f);
     float bouncerTurnAngle = 637.0f * (abs(physics.turnAngle(*bouncer, target->pos)) - M_PI/2.0f);
     float enemyTurnAngle = 637.0f * (abs(physics.turnAngle(*target, bouncer->pos)) - M_PI/2.0f);
     float checkpointPenalty = target->passedCheckpoints > targetPrev->passedCheckpoints ? 1 : 0;

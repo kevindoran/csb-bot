@@ -99,6 +99,12 @@ struct PodState {
     bool operator !=(const PodState& other) const {
         return !(*this == other);
     }
+
+    void addAngle(float angleRadians) {
+        angle += angleRadians;
+        if(angle >= 2*M_PI) angle -= 2*M_PI;
+        else if(angle < 0) angle += 2*M_PI;
+    }
 };
 
 struct PlayerState {
