@@ -6,7 +6,7 @@
 #include "Navigation.h"
 
 TEST(NavigationTest, seek_thrust_below_max) {
-    Race r(1, {});
+    Race r;
     Navigation nav(r);
     Vector pos(200, 200);
     Vector vel(100, 100);
@@ -15,7 +15,7 @@ TEST(NavigationTest, seek_thrust_below_max) {
     PodState ps(pos, vel, angle, next_cp);
 
     Vector target(500, 0);
-    int max_acc = 100;
+    int max_acc = 200;
 
     for(int i = 0; i < 1000; i+= 50) {
         for(int j = 0; j < 1000; j+=50) {

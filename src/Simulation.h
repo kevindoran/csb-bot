@@ -238,17 +238,17 @@ public:
 
             // Train pod 1
             PairOutput bouncerSolution[5];
-            AnnealingBot<5> bouncerBotFake(race, 30);
-            bouncerBotFake.isControl = true;
+            AnnealingBot<5> bouncerBotFake(race, 25);
+//            bouncerBotFake.isControl = true;
             bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution);
             CustomAIWithBackup bouncerAI(race, bouncerSolution, 0);
             bouncerAI.setDefaultAfter(5);
             AnnealingBot<6> racerBot(race, 70, &bouncerAI);
-            racerBot.isControl = true;
+//            racerBot.isControl = true;
 
             // Train pod 2
             PairOutput racerSolution[5];
-            AnnealingBot<5> racerBotFake(race, 30);
+            AnnealingBot<5> racerBotFake(race, 25);
             racerBotFake.sFactors = sFactors;
             racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution);
             CustomAIWithBackup racerAI(race, racerSolution, 0);
