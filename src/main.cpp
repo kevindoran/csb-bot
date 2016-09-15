@@ -16,9 +16,9 @@ int main() {
     Physics physics(race);
     std::srand(std::time(0));
 
-    AnnealingBot<6> bot(race, 115);
+    AnnealingBot<6> bot(race, 98);
 //    AnnealingBot<4> botFake(race, 30);
-    AnnealingBot<4> enemyBot(race, 34);
+    AnnealingBot<5> enemyBot(race, 50);
     // Game loop.
     while (1) {
         long long startTime = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();

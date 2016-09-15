@@ -36,19 +36,19 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        4276, // passCPBonus
+        2898, // passCPBonus
         1.91,    // progressToCP
-        -0.932, // enemyProgress
+        -0.429, // enemyProgress
         1,    // overallBouncer
-        -0.079, // enemyDist
-        1.41, // enemyDistToCP
+        -0.280, // enemyDist
+        1.69, // enemyDistToCP
         -1.07,  // bouncerDistToCP
-        -0.025,  // angleSeenByCP
-        -1.42,  // angleSeenByEnemy
-        -0.785,  // bouncerTurnAngle
-        -0.669,  // enemyTurn angle
-        -4031   // checkpoint penalty
-        -89   // shield penalty
+        -0.969,  // angleSeenByCP
+        -0.224,  // angleSeenByEnemy
+        -0.528,  // bouncerTurnAngle
+        -1.56,  // enemyTurn angle
+        -2070,   // checkpoint penalty
+        -390   // shield penalty
 };
 
 
@@ -191,8 +191,8 @@ private:
     static const int timeBufferMilli = 1;
     static constexpr float initTemp = 10.0;
     static constexpr float initCoolingFraction = 0.95;
-    static constexpr float startAcceptanceRate = 0.98;
-    static constexpr float endAcceptanceRate = 0.02;
+    static constexpr float startAcceptanceRate = 0.95;
+    static constexpr float endAcceptanceRate = 0.0002;
     static constexpr float stepsVsCoolRatio = 1.3;
     static const int initCoolingSteps = 160;
     static const int initStepsPerTemp = 140;
@@ -262,7 +262,7 @@ private:
             coolingSteps = sqrt((simCount + simsRemaining) / (stepsVsCoolRatio));
             stepsPerTemp = coolingSteps * stepsVsCoolRatio;
 
-//            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
+            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
             tunnelCount = 0;
             nonTunnelCount = 0;
             simsSinceUpdate = 0;
@@ -414,7 +414,7 @@ void AnnealingBot<TURNS>::randomEdit(PairOutput& po) {//, int turnsRemaining, fl
 //    int thrustDelta = (int) dist / thrustFactor;
 //    float angle;
     if(sw < 5.0/32.0) {
-        po.o1.thrust = max(0, min(MAX_THRUST, (rand() % (500 + 1) - 100)));
+        po.o1.thrust = max(0, min(MAX_THRUST, (rand() % (400 + 1) - 100)));
 //        if(po.o1.thrust == MAX_THRUST || flip < 0.5) {
 //            po.o1.thrust = max(0, po.o1.thrust - thrustDelta);
 //        } else {
@@ -422,31 +422,33 @@ void AnnealingBot<TURNS>::randomEdit(PairOutput& po) {//, int turnsRemaining, fl
 //        }
         po.o1.shieldEnabled = false;
     } else if(sw < 10.0/32.0) {
-        po.o2.thrust = max(0, min(MAX_THRUST, (rand() % (500 + 1) - 100)));
+        po.o2.thrust = max(0, min(MAX_THRUST, (rand() % (400 + 1) - 100)));
 //        if(po.o2.thrust == MAX_THRUST || flip < 0.5) {
 //            po.o2.thrust = max(0, po.o2.thrust - thrustDelta);
 //        } else {
 //            po.o2.thrust = min(MAX_THRUST, po.o2.thrust + thrustDelta);
 //        }
         po.o2.shieldEnabled = false;
-    } else if(sw < 19.0/32.0) {
-        po.o1.angle = max(-MAX_ANGLE, min(MAX_ANGLE, physics.degreesToRad(-30 + rand() % (60 + 1))));
+    } else if(sw < 20.0/32.0) {
+        po.o1.angle = max(-MAX_ANGLE, min(MAX_ANGLE, physics.degreesToRad(-25 + rand() % (50 + 1))));
 //        if(po.o1.angle == MAX_ANGLE || flip < 0.5) {
 //            po.o1.angle = max(-MAX_ANGLE, po.o1.angle - angleDelta);
 //        } else {
 //            po.o1.angle = min(MAX_ANGLE, po.o1.angle + angleDelta);
 //        }
-    } else if(sw < 28.0/32.0) {
-        po.o2.angle = max(-MAX_ANGLE, min(MAX_ANGLE, physics.degreesToRad(-30 + rand() % (60 + 1))));
+    } else if(sw < 30.0/32.0) {
+        po.o2.angle = max(-MAX_ANGLE, min(MAX_ANGLE, physics.degreesToRad(-25 + rand() % (50 + 1))));
 //        if(po.o2.angle == MAX_ANGLE || flip < 0.5) {
 //            po.o2.angle = max(-MAX_ANGLE, po.o2.angle - angleDelta);
 //        } else {
 //            po.o2.angle = min(MAX_ANGLE, po.o2.angle + angleDelta);
 //        }
-    } else if(sw < 30.0/32.0) {
+    } else if(sw < 31.0/32.0) {
         po.o1.shieldEnabled = true;
+        po.o1.thrust = 0;
     } else if(sw < 1.0) {
         po.o2.shieldEnabled = true;
+        po.o2.thrust = 0;
     }
 }
 
@@ -550,7 +552,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
         currentTemp *= coolingFraction;
     }
 //    cerr << "End score: " << currentScore << endl;
-//    cerr << "Sim count:" << simCount << endl;
+    cerr << "Sim count:" << simCount << endl;
 //    cerr << "Average score diff: " << diffSum / simCount << endl;
     memcpy(solution, best, TURNS*sizeof(PairOutput));
 //    cerr << "Current (pos, vel)   " << podsToTrain[0].pos << "   " << podsToTrain[0].vel << endl;
@@ -603,13 +605,15 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
     }
 
     // Racer
-    float racerScore = progress(pods[0], podsPrev[0]) + sFactors.enemyProgress*progress(enemyPods[0], enemyPodsPrev[0]);
+    float racerScore = progress(pods[0], podsPrev[0]);
     float chaserScore = 0;
-    if(pods[0]->turnsSinceCP > 60) {
-        chaserScore -=  0.3*Vector::dist(pods[0]->pos, pods[1]->pos);
-        chaserScore += 0.3*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
+    if(pods[0]->turnsSinceCP > 55) {
+        chaserScore -=  0.4*Vector::dist(pods[0]->pos, pods[1]->pos);
+        chaserScore += 0.6*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
+        chaserScore += 0.2*Vector::dist(enemyPods[0]->pos, pods[0]->pos);
     } else {
         chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
+        racerScore += sFactors.enemyProgress*progress(enemyPods[0], enemyPodsPrev[0]);
     }
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
     return score;
@@ -668,7 +672,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
              sFactors.checkpointPenalty * checkpointPenalty;
 
     // Test
-    score += max(0, 6-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
+    score += max(0, TURNS-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
     if(!(score <= 0 || score >= 0)) {
         cerr << "NaN for bouncer score." << endl;
         cerr << "angleSeenByCP " << angleSeenByCP << endl;
