@@ -36,19 +36,19 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        5701, // passCPBonus
-        1.70,    // progressToCP
-        -0.886, // enemyProgress
+        4276, // passCPBonus
+        1.91,    // progressToCP
+        -0.932, // enemyProgress
         1,    // overallBouncer
         -0.079, // enemyDist
-        1.93, // enemyDistToCP
-        -1.86,  // bouncerDistToCP
-        -1.33,  // angleSeenByCP
-        -0.084,  // angleSeenByEnemy
-        -1.73,  // bouncerTurnAngle
-        -1.15,  // enemyTurn angle
-        -1581   // checkpoint penalty
-        -390   // shield penalty
+        1.41, // enemyDistToCP
+        -1.07,  // bouncerDistToCP
+        -0.025,  // angleSeenByCP
+        -1.42,  // angleSeenByEnemy
+        -0.785,  // bouncerTurnAngle
+        -0.669,  // enemyTurn angle
+        -4031   // checkpoint penalty
+        -89   // shield penalty
 };
 
 
@@ -97,7 +97,15 @@ public:
         // Racer
         Vector drift = ourPods[0].vel * 3.5;
         Vector target = race.checkpoints[ourPods[0].nextCheckpoint] - drift;
-        float turnAngle = physics.turnAngle(ourPods[0], target);
+        float turnAngle;
+        // It is possible that the target happens to be the pods position. This will cause a NaN to be returned from
+        // turnAngle(ourPods[0], target). Therefore, check for this case and use 0 instead.
+        static constexpr closeEnough = 26;
+        if(Vector::distSq(ourPods[0].pos, target) < closeEnough) {
+            turnAngle = 0;
+        }else {
+            turnAngle = physics.turnAngle(ourPods[0], target);
+        }
         Vector force;
         static constexpr float angleThreshold = MAX_ANGLE;
         static constexpr float cutOff = M_PI/2 + MAX_ANGLE;
@@ -604,9 +612,6 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
         chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
     }
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
-    if(!(score <= 0 || score >= 0)) {
-        cerr << "Score NaN, but from where?" << endl;
-    }
     return score;
 }
 
@@ -624,9 +629,6 @@ float AnnealingBot<TURNS>::progress(const PodState* pod, const PodState* previou
         progress += sFactors.passCPBonus;
         progress += sFactors.progressToCP * race.distFromPrevCP(i);
         i = race.followingCheckpoint(i);
-    }
-    if(!(progress <= 0 || progress >= 0)) {
-        cerr << "Progress NaN: " << progress << endl;
     }
     return progress;
 }

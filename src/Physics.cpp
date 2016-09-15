@@ -122,7 +122,6 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         }
         pCPEvents.clear();
         float moveTime = hasCollision ? earliest.time() : 1.0 - time;
-
         for(int i = 0; i < POD_COUNT*2; i++) {
             pods[i]->pos.x += pods[i]->vel.x * moveTime;
             pods[i]->pos.y += pods[i]->vel.y * moveTime;
@@ -135,17 +134,16 @@ void Physics::simulate(PodState* pods[POD_COUNT*2]) {
         }
         time += moveTime;
     }
-
     // Drag and rounding.
     for(int i = 0; i < POD_COUNT*2; i++) {
-        pods[i]->vel.x = pods[i]->vel.x * DRAG;
-        pods[i]->vel.y = pods[i]->vel.y * DRAG;
+        pods[i]->vel.x *= DRAG;
+        pods[i]->vel.y *= DRAG;
         pods[i]->vel.x = (int) pods[i]->vel.x;
         pods[i]->vel.y = (int) pods[i]->vel.y;
         // The instructions say that position is rounded, however, on inspection, truncating seems to be closer
         // to reality. In addition, rounding is a non-insignificant performance cost.
-        pods[i]->pos.x = (int) pods[i]->pos.x;//round(pods[i]->pos.x);
-        pods[i]->pos.y = (int) pods[i]->pos.y;//round(pods[i]->pos.y);
+        pods[i]->pos.x = (int) pods[i]->pos.x;
+        pods[i]->pos.y = (int) pods[i]->pos.y;
         pods[i]->pos.resetLengths();
         pods[i]->vel.resetLengths();
     }
@@ -165,7 +163,8 @@ bool Collision::testForCollision(PodState& a, PodState& b, Collision* collision)
     float pathEndY = pathStartY + velY;
 
     Vector closestPoint = Physics::closestPointOnLine(pathStartX, pathStartY, pathEndX, pathEndY, 0, 0);
-    if(closestPoint.getLengthSq() > (2*POD_RADIUS)*(2*POD_RADIUS)) {
+    // Should be >=, as equality means that the pods will touch, but not collide.
+    if(closestPoint.getLengthSq() >= (2*POD_RADIUS)*(2*POD_RADIUS)) {
         return false;
     } else {
         float velLength = sqrt(velX * velX + velY * velY);
