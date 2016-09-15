@@ -274,12 +274,13 @@ private:
             // T0 = -sd/ln(startAcceptanceRate)    [from startAcceptanceRate = exp(-sd/T0)]
             float SD = sqrt(M2/simCount);
 //            cerr << "SD: " << SD << endl;
-            float startTemp = -SD/log(startAcceptanceRate);
-            float endTemp = -SD/log(endAcceptanceRate);
+            cerr << "mean: " << mean << endl;
+            float startTemp = -mean/log(startAcceptanceRate);
+            float endTemp = -mean/log(endAcceptanceRate);
             coolingFraction = pow(endTemp/startTemp, 1.0/(coolingSteps));
             currentTemp = startTemp*pow(coolingFraction, coolingIdx);
 //            cerr << "Cooling steps: " << coolingSteps;
-//            cerr << "Cooling Fraction: " << coolingFraction << endl;
+            cerr << "Cooling Fraction: " << coolingFraction << endl;
         }
     }
 
@@ -484,7 +485,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
     PairOutput saved;
     PairOutput best[TURNS];
     // SD & mean
-    mean = currentScore;
+    mean = 0;
     float d = 0;
     M2 = 0;
     float meanPrev;
@@ -498,22 +499,6 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             saved = solution[toEdit];
             randomEdit(solution[toEdit]);//, TURNS - toEdit, ((float)coolingIdx)/coolingSteps);
             updated_score =  score(solution, toEdit);
-            // Stats
-            d = updated_score - mean;
-            // simCount is updated at the end of the loop, so need to add 1 here.
-            meanPrev = mean;
-            mean += d / (simCount+1);
-            M2 += d * (updated_score - mean);
-            if(!(M2 >= 0 || M2 <= 0)) {
-                cerr << "Updated score: " << updated_score << endl;
-                cerr << "M2: " << M2 << endl;
-                cerr << "Sim count: " << simCount << endl;
-                cerr << "Mean: " << mean << endl;
-                cerr << "d: " << d << endl;
-                cerr << "(coolIdx, j) " << "("<< coolingIdx << ", " << j << ")" << endl;
-                M2 = 0;
-                mean = meanPrev;
-            }
             if(updated_score < 0) {
                 cerr << "Score below zero  " << updated_score << endl;
             }
@@ -521,7 +506,22 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
                 bestScore = updated_score;
                 memcpy(best, solution, TURNS * sizeof(PairOutput));
             }
+            // Stats
             delta = updated_score - currentScore;
+            if(delta > 0) {
+                d = delta - mean;
+                // simCount is updated at the end of the loop, so need to add 1 here.
+                mean += d / (simCount + 1);
+                M2 += d * (delta - mean);
+                if (!(M2 >= 0 || M2 <= 0)) {
+                    cerr << "Updated score: " << updated_score << endl;
+                    cerr << "M2: " << M2 << endl;
+                    cerr << "Sim count: " << simCount << endl;
+                    cerr << "Mean: " << mean << endl;
+                    cerr << "d: " << d << endl;
+                    cerr << "(coolIdx, j) " << "(" << coolingIdx << ", " << j << ")" << endl;
+                }
+            }
             if(delta > 0) diffSum += delta;
             exponent = (-delta /*/currentScore*/) / (currentTemp);
             merit = exp(exponent);
