@@ -100,7 +100,7 @@ public:
         float turnAngle;
         // It is possible that the target happens to be the pods position. This will cause a NaN to be returned from
         // turnAngle(ourPods[0], target). Therefore, check for this case and use 0 instead.
-        static constexpr closeEnough = 26;
+        static constexpr float closeEnough = 26;
         if(Vector::distSq(ourPods[0].pos, target) < closeEnough) {
             turnAngle = 0;
         }else {

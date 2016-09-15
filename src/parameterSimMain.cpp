@@ -125,6 +125,7 @@ string printScoreFactors(ScoreFactors sf) {
     out << "Bouncer turn angle: " << sf.bouncerTurnAngle << endl;
     out << "Enemy turn angle: " << sf.enemyTurnAngle << endl;
     out << "Checkpoint penalty: " << sf.checkpointPenalty << endl;
+    out << "Shield penalty: " << sf.shieldPenalty << endl;
     out << endl;
     return out.str();
 }
@@ -145,6 +146,7 @@ ScoreFactors generateScoreFactor() {
     sf.bouncerTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
     sf.enemyTurnAngle   = -(2.0 * (float) rand()) / RAND_MAX;
     sf.checkpointPenalty = -(rand() % (6000 + 1));
+    sf.shieldPenalty = -(rand() % (1000 + 1));
     return sf;
 }
 
@@ -163,24 +165,26 @@ ScoreFactors testScoreFactors() {
     sf.angleSeenByEnemy = -0.628;//.1214;
     sf.angleSeenByCP = -1.82;//.1246;
     sf.checkpointPenalty = -3644;
+    sf.shieldPenalty = -600;
     return sf;
 }
 
 ScoreFactors startingSFs() {
     ScoreFactors sf = {};
     sf.overallRacer = 1;
-    sf.passCPBonus = 1789;
+    sf.passCPBonus = 4276;
     sf.progressToCP = 1.91;
-    sf.enemyProgress = -0.070;
+    sf.enemyProgress = -0.932;
     sf.overallBouncer = 1;
     sf.enemyDist = -0.079;
-    sf.enemyDistToCP = 1.26;
-    sf.bouncerDistToCP = -0.928;//-0.925;
+    sf.enemyDistToCP = 1.41;
+    sf.bouncerDistToCP = -1.07;//-0.925;
     sf.enemyTurnAngle = -0.669;//.0670;
     sf.bouncerTurnAngle = -0.785;//.03651;
-    sf.angleSeenByEnemy = -1.17;//.1214;
-    sf.angleSeenByCP = -0.158;//.1246;
-    sf.checkpointPenalty = -74;
+    sf.angleSeenByEnemy = -1.42;//.1214;
+    sf.angleSeenByCP = -0.025;//.1246;
+    sf.checkpointPenalty = -4031;
+    sf.shieldPenalty = -89;
     return sf;
 }
 
@@ -189,26 +193,28 @@ ScoreFactors randomAlter(ScoreFactors sf) {
     float flip = (float) rand() / RAND_MAX;
     if(sw < 1.0/11.0) {
         sf.passCPBonus = rand() % (6000 + 1);
-    } else if(sw < 2.0/11.0) {
+    } else if(sw < 2.0/12.0) {
         sf.progressToCP = (2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 3.0/11.0) {
+    } else if(sw < 3.0/12.0) {
         sf.enemyProgress    = -(1.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 4.0/11.0) {
+    } else if(sw < 4.0/12.0) {
         sf.enemyDist    =     -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 5.0/11.0) {
+    } else if(sw < 5.0/12.0) {
         sf.enemyDistToCP    =  (2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 6.0/11.0) {
+    } else if(sw < 6.0/12.0) {
         sf.bouncerDistToCP  = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 7.0/11.0) {
+    } else if(sw < 7.0/12.0) {
         sf.angleSeenByEnemy = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 8.0/11.0) {
+    } else if(sw < 8.0/12.0) {
         sf.angleSeenByCP    = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 9.0/11.0) {
+    } else if(sw < 9.0/12.0) {
         sf.bouncerTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 10.0/11.0) {
+    } else if(sw < 10.0/12.0) {
         sf.enemyTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 11.0/11.0) {
+    } else if(sw < 11.0/12.0) {
         sf.checkpointPenalty = -(rand() % (6000 + 1));
+    } else if(sw < 12.0/12.0) {
+        sf.shieldPenalty = -(rand() % (1000 + 1));
     }
     return sf;
 }
@@ -289,7 +295,7 @@ void multiGameWorker() {
 }
 
 //const int WORKER_COUNT = 31;
-const int WORKER_COUNT = 15;
+const int WORKER_COUNT = 11;
 
 const int K = 5;
 // Estimated mean and neighborhood size.
