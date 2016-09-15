@@ -500,6 +500,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
                 cerr << "Sim count: " << simCount << endl;
                 cerr << "Mean: " << mean << endl;
                 cerr << "d: " << d << endl;
+                cerr << "(coolIdx, j) " << "("<< coolingIdx << ", " << j << ")" << endl;
                 M2 = 0;
                 mean = meanPrev;
             }
@@ -675,7 +676,12 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
         cerr << "bouncerCPDiff " << bouncerCPDiff.getLength() << endl;
         cerr << "enemyBouncerDiff " << enemyBouncerDiff.getLength() << endl;
         cerr << "bouncer pos " << bouncer->pos << endl;
+        cerr << "bouncer vel " << bouncer->vel << endl;
+        cerr << "bouncer turn " << bouncer->angle << endl;
         cerr << "target pos " << target->pos << endl;
+        cerr << "target vel " << target->vel << endl;
+        cerr << "target turn " << target->angle << endl;
+        cerr << "checkpoint pos " << race.checkpoints[targetCP] << endl;
     }
     return score;
 }
