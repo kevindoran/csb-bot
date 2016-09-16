@@ -13,6 +13,7 @@
 #include "Bot.h"
 #include "Navigation.h"
 #include "Physics.h"
+#include "OnlineMedian.h"
 
 
 struct ScoreFactors {
@@ -215,6 +216,7 @@ private:
     // SD & mean
     float mean;
     double M2;
+    OnlineMedian<float> onlineMedian;
 
 
     Race race;
@@ -261,26 +263,25 @@ private:
             // A = sqrt(C/2)
             coolingSteps = sqrt((simCount + simsRemaining) / (stepsVsCoolRatio));
             stepsPerTemp = coolingSteps * stepsVsCoolRatio;
-
-            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
+//            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
             tunnelCount = 0;
             nonTunnelCount = 0;
             simsSinceUpdate = 0;
 //            cerr << "alpha: " << coolingFraction << endl;
-//            cerr << "Cooling steps: " << coolingSteps << endl;
 //            cerr << "Steps per temp: " << stepsPerTemp << endl;
         }
         if(elapsed > reevalPeriodMilli || coolingIdx == 1) {
             // T0 = -sd/ln(startAcceptanceRate)    [from startAcceptanceRate = exp(-sd/T0)]
             float SD = sqrt(M2/simCount);
 //            cerr << "SD: " << SD << endl;
-            cerr << "mean: " << mean << endl;
-            float startTemp = -mean/log(startAcceptanceRate);
-            float endTemp = -mean/log(endAcceptanceRate);
-            coolingFraction = pow(endTemp/startTemp, 1.0/(coolingSteps));
+            float median = onlineMedian.median();
+//            cerr << "mean: " << mean << "    median: " << median << endl;
+            float startTemp = -median/log(startAcceptanceRate);
+            float endTemp = -median/log(endAcceptanceRate);
+            coolingFraction = pow(endTemp/startTemp, 1.0/(coolingSteps*0.6));
             currentTemp = startTemp*pow(coolingFraction, coolingIdx);
-//            cerr << "Cooling steps: " << coolingSteps;
-            cerr << "Cooling Fraction: " << coolingFraction << endl;
+//            cerr << "Current Temp: " << currentTemp << "    coolingIdx: " << coolingIdx << endl;
+//            cerr << "Cooling Fraction: " << coolingFraction  << "     Cooling steps: " << coolingSteps << endl;
         }
     }
 
@@ -298,6 +299,9 @@ private:
         coolingIdx = 0;
         diffSum = 0;
         coolCount = 0;
+        mean = 0;
+//        M2 = 0;
+        onlineMedian = OnlineMedian<float>();
     }
 
 public:
@@ -486,9 +490,9 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
     PairOutput best[TURNS];
     // SD & mean
     mean = 0;
+//    onlineMedian.add(0.0f);
     float d = 0;
-    M2 = 0;
-    float meanPrev;
+//    M2 = 0;
 
     for(; coolingIdx <= coolingSteps; coolingIdx++) {
         updateLoopControl();
@@ -512,15 +516,16 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
                 d = delta - mean;
                 // simCount is updated at the end of the loop, so need to add 1 here.
                 mean += d / (simCount + 1);
-                M2 += d * (delta - mean);
-                if (!(M2 >= 0 || M2 <= 0)) {
-                    cerr << "Updated score: " << updated_score << endl;
-                    cerr << "M2: " << M2 << endl;
-                    cerr << "Sim count: " << simCount << endl;
-                    cerr << "Mean: " << mean << endl;
-                    cerr << "d: " << d << endl;
-                    cerr << "(coolIdx, j) " << "(" << coolingIdx << ", " << j << ")" << endl;
-                }
+                onlineMedian.add(delta);
+//                M2 += d * (delta - mean);
+//                if (!(M2 >= 0 || M2 <= 0)) {
+//                    cerr << "Updated score: " << updated_score << endl;
+//                    cerr << "M2: " << M2 << endl;
+//                    cerr << "Sim count: " << simCount << endl;
+//                    cerr << "Mean: " << mean << endl;
+//                    cerr << "d: " << d << endl;
+//                    cerr << "(coolIdx, j) " << "(" << coolingIdx << ", " << j << ")" << endl;
+//                }
             }
             if(delta > 0) diffSum += delta;
             exponent = (-delta /*/currentScore*/) / (currentTemp);
