@@ -625,6 +625,8 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
         chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
         racerScore += sFactors.enemyProgress*progress(enemyPods[0], enemyPodsPrev[0]);
     }
+    Vector toCPTangent = (race.checkpoints[pods[0]->nextCheckpoint] - pods[0]->pos).tanget().normalize();
+    racerScore += min(3000.0f, 50*abs((toCPTangent.project(pods[0]->vel) - toCPTangent.project(enemyPods[1]->vel)).getLengthSq()));
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
     return score;
 }
@@ -637,13 +639,22 @@ float AnnealingBot<TURNS>::progress(const PodState* pod, const PodState* previou
     int ourCurCPID = previous->nextCheckpoint;
     Vector ourNextCP = race.checkpoints[ourNextCPID];
     Vector ourCurCP = race.checkpoints[ourCurCPID];
-    float progress = sFactors.progressToCP * (race.distFromPrevCP(ourNextCPID) - Vector::dist(pod->pos, ourNextCP));
-    int i = ourCurCPID;
-    while(i != ourNextCPID) {
-        progress += sFactors.passCPBonus;
-        progress += sFactors.progressToCP * race.distFromPrevCP(i);
-        i = race.followingCheckpoint(i);
+    float progress = -Vector::dist(pod->pos, race.checkpoints[pod->nextCheckpoint]) + 20000 * (pod->passedCheckpoints - previous->passedCheckpoints);
+//    float progress = sFactors.progressToCP * (race.distFromPrevCP(ourNextCPID) - Vector::dist(pod->pos, ourNextCP));
+    for(int i = 0; i < TURNS; i++) {
+        if(ourSimHistory[i+1][0].nextCheckpoint != ourSimHistory[i][0].nextCheckpoint) {
+            progress += sFactors.passCPBonus;
+//            progress += sFactors.progressToCP * race.distFromPrevCP(ourSimHistory[i][0].nextCheckpoint);
+            progress += 1000 * (TURNS - i);
+        }
     }
+//    int i = ourCurCPID;
+//    while(i != ourNextCPID) {
+//        progress += sFactors.passCPBonus;
+//        progress += sFactors.progressToCP * race.distFromPrevCP(i);
+//        i = race.followingCheckpoint(i);
+//    }
+    progress -= max(0, TURNS -pod->turnsSinceShield)*330;
     return progress;
 }
 
