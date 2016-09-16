@@ -12,11 +12,5 @@ add_executable(runTests
         navigation_test.cpp
         duel_bot_test.cpp)
 
-add_executable(profile
-        duel_bot_test.cpp)
-
-target_link_libraries(profile gtest gtest_main)
-target_link_libraries(profile PodracerBot)
-
 target_link_libraries(runTests gtest gtest_main)
 target_link_libraries(runTests PodracerBot)

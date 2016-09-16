@@ -673,8 +673,13 @@ template<int TURNS>
 float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState *target, const PodState *targetPrev) {
     float score = 0;
     int targetCP = target->nextCheckpoint;
-    Vector enemyCPDiff = target->pos - race.checkpoints[target->nextCheckpoint];
-    Vector bouncerCPDiff = bouncer->pos - race.checkpoints[target->nextCheckpoint];
+    bool next = false;
+    if(targetPrev->passedCheckpoints != race.totalCPCount() -1 && Vector::dist(bouncer->pos, race.checkpoints[targetPrev->nextCheckpoint]) > Vector::dist(targetPrev->pos, race.checkpoints[targetPrev->nextCheckpoint]) + 1700) {
+        targetCP = race.followingCheckpoint(targetPrev->nextCheckpoint);
+        next = true;
+    }
+    Vector enemyCPDiff = target->pos - race.checkpoints[targetCP];
+    Vector bouncerCPDiff = bouncer->pos - race.checkpoints[targetCP];
     Vector enemyBouncerDiff = bouncer->pos - target->pos;
     static const int TOO_CLOSE = 50;
     float angleSeenByCP = bouncerCPDiff.getLength() <= TOO_CLOSE ? 0 : 637.0f * (abs(physics.angleBetween(enemyCPDiff, bouncerCPDiff)) - M_PI/2.0f);

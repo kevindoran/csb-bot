@@ -34,14 +34,14 @@ int main(int argc, char* argv[]) {
     } else {
         out = &cout;
     }
-    DuelBot* b1 = new AnnealingBot<6>(r1, 140);
+    DuelBot* b1 = new AnnealingBot<6>(r1, 120);
 //    DuelBot* b1 = new TraditionalBot();
     DuelBot* b2 = new TraditionalBot();
     Simulation sim(r3);
 //    GameHistory gh = sim.simulate(b1, b2);
     sim.fullGameParamSim(sfs, true);
     GameHistory gh = sim.history;
-    *out << "gameData = ";
-    gh.writeToStream(*out);
-    *out << ";";
+//    *out << "gameData = ";
+//    gh.writeToStream(*out);
+//    *out << ";";
 }

@@ -16,9 +16,9 @@ int main() {
     Physics physics(race);
     std::srand(std::time(0));
 
-    AnnealingBot<6> bot(race, 98);
+    AnnealingBot<6> bot(race, 109);
 //    AnnealingBot<4> botFake(race, 30);
-    AnnealingBot<5> enemyBot(race, 50);
+    AnnealingBot<4> enemyBot(race, 39);
     // Game loop.
     while (1) {
         long long startTime = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
@@ -26,11 +26,11 @@ int main() {
         inputParser.parseTurn(players);
         state.preTurnUpdate(players);
         // Train opponent.
-        PairOutput enemySolution[5];
+        PairOutput enemySolution[4];
         enemyBot.train(state.game().enemyState().pods, state.game().ourState().pods, enemySolution);
         static int startFromTurn = 0;
         CustomAIWithBackup enemyAI(race, enemySolution, startFromTurn);
-        enemyAI.setDefaultAfter(5);
+        enemyAI.setDefaultAfter(4);
 
 //        PairOutput ourFirstSol[4];
 //        AnnealingBot<4> ourFirstBot(race, 20);
