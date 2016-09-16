@@ -37,19 +37,19 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        2898, // passCPBonus
+        3439, // passCPBonus
         1.91,    // progressToCP
-        -0.429, // enemyProgress
+        -0.625, // enemyProgress
         1,    // overallBouncer
         -0.280, // enemyDist
-        1.69, // enemyDistToCP
+        1.99, // enemyDistToCP
         -1.07,  // bouncerDistToCP
-        -0.969,  // angleSeenByCP
-        -0.224,  // angleSeenByEnemy
+        -0.539,  // angleSeenByCP
+        -0.676,  // angleSeenByEnemy
         -0.528,  // bouncerTurnAngle
         -1.56,  // enemyTurn angle
-        -2070,   // checkpoint penalty
-        -390   // shield penalty
+        -4918,   // checkpoint penalty
+        -381   // shield penalty
 };
 
 
@@ -190,10 +190,10 @@ private:
     // Loop control and timing.
     static const int reevalPeriodMilli = 4;
     static const int timeBufferMilli = 1;
-    static constexpr float initTemp = 10.0;
+    static constexpr float initTemp = 23000.0;
     static constexpr float initCoolingFraction = 0.95;
-    static constexpr float startAcceptanceRate = 0.95;
-    static constexpr float endAcceptanceRate = 0.0002;
+    static constexpr float startAcceptanceRate = 0.96;
+    static constexpr float endAcceptanceRate = 0.00000000001;
     static constexpr float stepsVsCoolRatio = 1.3;
     static const int initCoolingSteps = 160;
     static const int initStepsPerTemp = 140;
@@ -253,6 +253,7 @@ private:
         if (timeRemaining < 0) {
             coolingSteps = 0;
             stepsPerTemp = 0;
+            cerr << "Tunnel %: " << (float) tunnelCount / (tunnelCount + nonTunnelCount) << endl;
         } else if (elapsed > reevalPeriodMilli) {
             // The update timer has elapsed, or we are on our second loop, so need to create a better estimate of
             // start temp, end temp and cooling fraction.
@@ -427,7 +428,7 @@ void AnnealingBot<TURNS>::randomEdit(PairOutput& po) {//, int turnsRemaining, fl
 //        }
         po.o1.shieldEnabled = false;
     } else if(sw < 10.0/32.0) {
-        po.o2.thrust = max(0, min(MAX_THRUST, (rand() % (400 + 1) - 100)));
+        po.o2.thrust = max(0, min(MAX_THRUST, (rand() % (600 + 1) - 200)));
 //        if(po.o2.thrust == MAX_THRUST || flip < 0.5) {
 //            po.o2.thrust = max(0, po.o2.thrust - thrustDelta);
 //        } else {
@@ -533,6 +534,10 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             if(merit > 1.0) {
                 merit = 0.0;
             }
+            // Pure hill climbing on the last turn (but allow transitions to state with equal score).
+            if(merit != 1 && (coolingIdx == coolingSteps || coolingSteps == 0)) {
+                merit = 0;
+            }
             if(delta < 0) {
                 currentScore += delta;
             } else {
@@ -550,9 +555,9 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
             simCount++;
             simsSinceUpdate++;
         }
-        if(currentScore - startScore < 0.0) {
-            currentTemp /= coolingFraction;
-        }
+//        if(currentScore - startScore < 0.0) {
+//            currentTemp /= coolingFraction;
+//        }
         coolCount++;
         currentTemp *= coolingFraction;
     }
@@ -591,14 +596,14 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
     if(pods[0]->passedCheckpoints == totalCPs) {
         for(int i = 1; i <= TURNS; i++) {
             if(ourSimHistory[0][i].passedCheckpoints == totalCPs) {
-                return minScore + i * 500;
+                return minScore + i * 5000;
             }
         }
     }
     if(enemyPods[0]->passedCheckpoints == totalCPs) {
-        for(int i = 0; i < TURNS; i++) {
+        for(int i = 1; i <= TURNS; i++) {
             if(enemySimHistory[0][i].passedCheckpoints == totalCPs) {
-                return maxScore  - i * 500;
+                return maxScore  - i * 5000;
             }
         }
     }
@@ -612,7 +617,7 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
     // Racer
     float racerScore = progress(pods[0], podsPrev[0]);
     float chaserScore = 0;
-    if(pods[0]->turnsSinceCP > 55) {
+    if(pods[0]->turnsSinceCP > 55 && !enemyPods[0]->passedCheckpoints >= race.totalCPCount() - 2) {
         chaserScore -=  0.4*Vector::dist(pods[0]->pos, pods[1]->pos);
         chaserScore += 0.6*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
         chaserScore += 0.2*Vector::dist(enemyPods[0]->pos, pods[0]->pos);
@@ -667,34 +672,37 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     float enemyTurnAngle = 637.0f * (abs(physics.turnAngle(*target, bouncer->pos)) - M_PI/2.0f);
     float checkpointPenalty = target->passedCheckpoints > targetPrev->passedCheckpoints ? 1 : 0;
 
-    score += sFactors.enemyDistToCP * (-4000 + min(MAX_DIST, enemyCPDiff.getLength())) +
+    score +=
              sFactors.bouncerDistToCP * (-4000 + min(MAX_DIST, bouncerCPDiff.getLength())) +
-             sFactors.enemyDist * (-3000 + min(MAX_DIST, enemyBouncerDiff.getLength())) +
-             sFactors.angleSeenByCP * angleSeenByCP +
-             sFactors.angleSeenByEnemy * angleSeenByEnemy +
-             sFactors.bouncerTurnAngle * bouncerTurnAngle +
-             sFactors.enemyTurnAngle * enemyTurnAngle +
-             sFactors.checkpointPenalty * checkpointPenalty;
+             sFactors.bouncerTurnAngle * bouncerTurnAngle;
 
+    if(!next) {
+        score += sFactors.enemyDistToCP * (-4000 + min(MAX_DIST, enemyCPDiff.getLength())) +
+                sFactors.angleSeenByCP * angleSeenByCP +
+                sFactors.angleSeenByEnemy * angleSeenByEnemy +
+                sFactors.enemyTurnAngle * enemyTurnAngle +
+                sFactors.enemyDist * (-3000 + min(MAX_DIST, enemyBouncerDiff.getLength())) +
+                sFactors.checkpointPenalty * checkpointPenalty;
+    }
     // Test
     score += max(0, TURNS-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
-    if(!(score <= 0 || score >= 0)) {
-        cerr << "NaN for bouncer score." << endl;
-        cerr << "angleSeenByCP " << angleSeenByCP << endl;
-        cerr << "angleSeenByEnemy " << angleSeenByEnemy << endl;
-        cerr << "bouncerTurnAngle"  << bouncerTurnAngle << endl;
-        cerr << "enemyTurnAngle " << enemyTurnAngle << endl;
-        cerr << "enemyCPDiff " << enemyCPDiff.getLength() << endl;
-        cerr << "bouncerCPDiff " << bouncerCPDiff.getLength() << endl;
-        cerr << "enemyBouncerDiff " << enemyBouncerDiff.getLength() << endl;
-        cerr << "bouncer pos " << bouncer->pos << endl;
-        cerr << "bouncer vel " << bouncer->vel << endl;
-        cerr << "bouncer turn " << bouncer->angle << endl;
-        cerr << "target pos " << target->pos << endl;
-        cerr << "target vel " << target->vel << endl;
-        cerr << "target turn " << target->angle << endl;
-        cerr << "checkpoint pos " << race.checkpoints[targetCP] << endl;
-    }
+//    if(!(score <= 0 || score >= 0)) {
+//        cerr << "NaN for bouncer score." << endl;
+//        cerr << "angleSeenByCP " << angleSeenByCP << endl;
+//        cerr << "angleSeenByEnemy " << angleSeenByEnemy << endl;
+//        cerr << "bouncerTurnAngle"  << bouncerTurnAngle << endl;
+//        cerr << "enemyTurnAngle " << enemyTurnAngle << endl;
+//        cerr << "enemyCPDiff " << enemyCPDiff.getLength() << endl;
+//        cerr << "bouncerCPDiff " << bouncerCPDiff.getLength() << endl;
+//        cerr << "enemyBouncerDiff " << enemyBouncerDiff.getLength() << endl;
+//        cerr << "bouncer pos " << bouncer->pos << endl;
+//        cerr << "bouncer vel " << bouncer->vel << endl;
+//        cerr << "bouncer turn " << bouncer->angle << endl;
+//        cerr << "target pos " << target->pos << endl;
+//        cerr << "target vel " << target->vel << endl;
+//        cerr << "target turn " << target->angle << endl;
+//        cerr << "checkpoint pos " << race.checkpoints[targetCP] << endl;
+//    }
     return score;
 }
 
