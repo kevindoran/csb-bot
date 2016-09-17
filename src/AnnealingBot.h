@@ -40,18 +40,18 @@ static ScoreFactors defaultFactors = {
         1,    // overallRacer
         202, // passCPBonus
         1.14,    // progressToCP
-        -0.80, // enemyProgress
-        20, // tangentVelocityBonus
+        -0.87, // enemyProgress
+        167, // tangentVelocityBonus
         1,    // overallBouncer
-        -0.280, // enemyDist
-        1.87, // enemyDistToCP
-        -1.47,  // bouncerDistToCP
-        -0.78,  // angleSeenByCP
+        -1.12, // enemyDist
+        1.25, // enemyDistToCP
+        -1.06,  // bouncerDistToCP
+        -0.604,  // angleSeenByCP
         -0.134,  // angleSeenByEnemy
-        -0.528,  // bouncerTurnAngle
-        -0.448,  // enemyTurn angle
-        -4918,   // checkpoint penalty
-        -300  // shield penalty
+        -1.635,  // bouncerTurnAngle
+        -0.711,  // enemyTurn angle
+        -333,   // checkpoint penalty
+        -100  // shield penalty
 };
 
 
@@ -667,7 +667,7 @@ float AnnealingBot<TURNS>::progress(const PodState* pod, const PodState* previou
 //        progress += sFactors.progressToCP * race.distFromPrevCP(i);
 //        i = race.followingCheckpoint(i);
 //    }
-    progress -= max(0, SHIELD_COOLDOWN -pod->turnsSinceShield)*200;
+    progress -= max(0, TURNS -pod->turnsSinceShield)*100;
     return progress;
 }
 
@@ -704,7 +704,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     score +=
              sFactors.bouncerDistToCP * (-4000 + min(MAX_DIST, bouncerCPDiff.getLength())) +
              sFactors.bouncerTurnAngle * bouncerTurnAngle;
-    score += max(0, SHIELD_COOLDOWN-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
+    score += max(0, TURNS-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
 
     if(!next) {
         score += sFactors.enemyDistToCP * (-4000 + min(MAX_DIST, enemyCPDiff.getLength())) +
