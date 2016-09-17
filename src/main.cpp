@@ -16,7 +16,7 @@ int main() {
     Physics physics(race);
     std::srand(std::time(0));
 
-    AnnealingBot<6> bot(race, 109);
+    AnnealingBot<6> bot(race, 108);
 //    AnnealingBot<4> botFake(race, 30);
     AnnealingBot<4> enemyBot(race, 39);
     // Game loop.
