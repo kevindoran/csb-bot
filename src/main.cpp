@@ -27,9 +27,10 @@ int main() {
         state.preTurnUpdate(players);
         // Train opponent.
         PairOutput enemySolution[4];
-        enemyBot.train(state.game().enemyState().pods, state.game().ourState().pods, enemySolution);
+        PodState ourStateExpectedByEnemy[4][2];
+        enemyBot.train(state.game().enemyState().pods, state.game().ourState().pods, enemySolution, ourStateExpectedByEnemy[0], true);
         static int startFromTurn = 0;
-        CustomAIWithBackup enemyAI(race, enemySolution, startFromTurn);
+        CustomAIWithBackup<4> enemyAI(race, enemySolution, ourStateExpectedByEnemy, startFromTurn);
         enemyAI.setDefaultAfter(4);
 
 //        PairOutput ourFirstSol[4];

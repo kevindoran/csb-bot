@@ -80,6 +80,8 @@ class MinimalBot : public SimBot {
     Race race;
     Physics physics;
     Navigation nav;
+    static constexpr float angleThreshold = MAX_ANGLE;
+    static constexpr float cutOff = M_PI/2 + MAX_ANGLE;
 public:
     MinimalBot() {}
 
@@ -93,39 +95,9 @@ public:
         nav = Navigation(race);
     }
 
-    /**
-     * ourPods and enemyPods must be orderd by progress; it is assumed that ourPods[0] is our lead pod.
-     */
-    void move(PodState* ourPods, PodState* enemyPods) {
-        // Racer
-        Vector drift = ourPods[0].vel * 3.5;
-        Vector target = race.checkpoints[ourPods[0].nextCheckpoint] - drift;
-        float turnAngle;
-        // It is possible that the target happens to be the pods position. This will cause a NaN to be returned from
-        // turnAngle(ourPods[0], target). Therefore, check for this case and use 0 instead.
-        static constexpr float closeEnough = 26;
-        if(Vector::distSq(ourPods[0].pos, target) < closeEnough) {
-            turnAngle = 0;
-        }else {
-            turnAngle = physics.turnAngle(ourPods[0], target);
-        }
-        Vector force;
-        static constexpr float angleThreshold = MAX_ANGLE;
-        static constexpr float cutOff = M_PI/2 + MAX_ANGLE;
-        if(abs(turnAngle) > MAX_ANGLE) {
-            float thrust = (int) MAX_THRUST - int(((turnAngle - angleThreshold) / (cutOff - angleThreshold)) * MAX_THRUST);
-            // Turn angle should be rounded to the nearest degree also.
-            turnAngle = turnAngle < 0 ? max(-MAX_ANGLE, turnAngle) : min(MAX_ANGLE, turnAngle);
-            force = Vector::fromMagAngle(thrust, turnAngle);
-        } else {
-            force = target.normalize() * MAX_THRUST;
-        }
-        ourPods[0].vel.x += force.x;
-        ourPods[0].vel.y += force.y;
-        ourPods[0].vel.resetLengths();
-        ourPods[0].addAngle(turnAngle);
-
+    void moveBouncer(PodState* ourPods, PodState* enemyPods) {
         // Bouncer
+        Vector target = race.checkpoints[enemyPods[0].nextCheckpoint];
         float targetx;
         float targety;
         if((target.x - ourPods[1].pos.x)*(target.x - ourPods[1].pos.x) + (target.y - ourPods[1].pos.y) * (target.y - ourPods[1].pos.y) >
@@ -139,7 +111,8 @@ public:
             targety = enemyPods[0].pos.y + (race.checkpoints[enemyPods[0].nextCheckpoint].y - enemyPods[0].pos.y) * 0.80;
         }
         target = Vector(targetx, targety);
-        turnAngle = physics.turnAngle(ourPods[1],target);
+        float turnAngle = physics.turnAngle(ourPods[1],target);
+        Vector force;
         if(abs(turnAngle) > MAX_ANGLE) {
             float thrust = MAX_THRUST - int(((turnAngle - angleThreshold) / (cutOff - angleThreshold)) * MAX_THRUST);
             turnAngle = turnAngle < 0 ? max(-MAX_ANGLE, turnAngle) : min(MAX_ANGLE, turnAngle);
@@ -151,18 +124,57 @@ public:
         ourPods[1].vel.y += force.y;
         ourPods[1].vel.resetLengths();
         ourPods[1].addAngle(turnAngle);
+    }
+
+    void moveRacer(PodState* ourPods, PodState* enemyPods) {
+        // Racer
+        Vector drift = ourPods[0].vel * 3.5;
+        Vector target = race.checkpoints[ourPods[0].nextCheckpoint] - drift;
+        float turnAngle;
+        // It is possible that the target happens to be the pods position. This will cause a NaN to be returned from
+        // turnAngle(ourPods[0], target). Therefore, check for this case and use 0 instead.
+        static constexpr float closeEnough = 26;
+        if(Vector::distSq(ourPods[0].pos, target) < closeEnough) {
+            turnAngle = 0;
+        }else {
+            turnAngle = physics.turnAngle(ourPods[0], target);
+        }
+        Vector force;
+        if(abs(turnAngle) > MAX_ANGLE) {
+            float thrust = (int) MAX_THRUST - int(((turnAngle - angleThreshold) / (cutOff - angleThreshold)) * MAX_THRUST);
+            // Turn angle should be rounded to the nearest degree also.
+            turnAngle = turnAngle < 0 ? max(-MAX_ANGLE, turnAngle) : min(MAX_ANGLE, turnAngle);
+            force = Vector::fromMagAngle(thrust, turnAngle);
+        } else {
+            force = target.normalize() * MAX_THRUST;
+        }
+        ourPods[0].vel.x += force.x;
+        ourPods[0].vel.y += force.y;
+        ourPods[0].vel.resetLengths();
+        ourPods[0].addAngle(turnAngle);
+    }
+
+    /**
+     * ourPods and enemyPods must be orderd by progress; it is assumed that ourPods[0] is our lead pod.
+     */
+    void move(PodState* ourPods, PodState* enemyPods) {
+        moveRacer(ourPods, enemyPods);
+        moveBouncer(ourPods, enemyPods);
     };
 };
 
+
+template<int TURNS>
 class CustomAIWithBackup : public SimBot {
     const PairOutput* moves;
+    const PodState (*enemyStates)[2];
     Race& race;
     MinimalBot backup;
     int turn;
     int defaultAfter = -1;
 public:
-    CustomAIWithBackup(Race& race, const PairOutput moves[], int startFromTurn):
-            race(race), moves(moves), backup(race), turn(startFromTurn) {}
+    CustomAIWithBackup(Race& race, const PairOutput moves[], const PodState enemyStates[TURNS][2], int startFromTurn):
+            race(race), moves(moves), enemyStates(enemyStates), backup(race), turn(startFromTurn) {}
 
     void setTurn(int fromTurn) {
         turn = fromTurn;
@@ -172,12 +184,34 @@ public:
         defaultAfter = turn;
     }
 
+    bool isEnemyRacerDataAccurate(int turn, PodState ourPods[], PodState enemyPods[]) {
+        float delta = Vector::dist(enemyStates[turn][0].pos, enemyPods[0].pos);
+        float distToEnemy = Vector::dist(ourPods[1].pos, enemyPods[0].pos);
+        return delta / distToEnemy < 0.5;
+    }
+
+    bool isEnemyBouncerDataAccurate(int turn, PodState ourPods[], PodState enemyPods[]) {
+        float delta = Vector::dist(enemyStates[turn][1].pos, enemyPods[1].pos);
+        float distToEnemy = Vector::dist(ourPods[0].pos, enemyPods[1].pos);
+        return delta / distToEnemy < 1.0;
+    }
+
     void move(PodState ourPods[], PodState enemyPods[]) {
         if(defaultAfter != -1 && turn >= defaultAfter) {
             backup.move(ourPods, enemyPods);
         } else {
-            Physics::apply(ourPods, moves[turn++]);
+            if(isEnemyBouncerDataAccurate(turn, ourPods, enemyPods)) {
+                Physics::apply(ourPods[0], moves[turn].o1);
+            } else {
+                backup.moveRacer(ourPods, enemyPods);
+            }
+            if(isEnemyRacerDataAccurate(turn, ourPods, enemyPods)) {
+                Physics::apply(ourPods[1], moves[turn].o2);
+            } else {
+                backup.moveBouncer(ourPods, enemyPods);
+            }
         }
+        turn++;
     }
 };
 
@@ -229,7 +263,7 @@ private:
     PodState enemySimHistory[TURNS + 1][POD_COUNT];
     PodState ourSimHistory[TURNS + 1][POD_COUNT];
 
-    void _train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]);
+    void _train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[], PodState* enemyPodState);
 
     float score(const PairOutput solution[], int startFromTurn);
 
@@ -346,7 +380,7 @@ public:
     float score(const PodState *pods[], const PodState *podsPrev[], const PodState *enemyPods[],
                 const PodState *enemyPodsPrev[]);
 
-    void train(const PodState pods[], const PodState enemyPods[], PairOutput solution[]) {
+    void train(const PodState pods[], const PodState enemyPods[], PairOutput solution[], PodState* enemyPodState, bool placeRacerFirst) {
         init();
         PodState ourPodsCopy[POD_COUNT];
         PodState enemyPodsCopy[POD_COUNT];
@@ -354,8 +388,8 @@ public:
         memcpy(enemyPodsCopy, enemyPods, sizeof(PodState) * POD_COUNT);
         bool switched = physics.orderByProgress(ourPodsCopy);
         physics.orderByProgress(enemyPodsCopy);
-        _train(ourPodsCopy, enemyPodsCopy, solution);
-        if (switched) {
+        _train(ourPodsCopy, enemyPodsCopy, solution, enemyPodState);
+        if (!placeRacerFirst && switched) {
             PodOutputSim temp;
             for(int i = 0; i < TURNS; i++) {
                 temp = solution[i].o1;
@@ -373,7 +407,8 @@ public:
             gameState.enemyState().pods[0].vel += (race.checkpoints[1] - gameState.enemyState().pods[0].pos).normalize() * BOOST_ACC;
             gameState.enemyState().pods[1].vel += (race.checkpoints[1] - gameState.enemyState().pods[1].pos).normalize() * BOOST_ACC;
         }
-        train(gameState.ourState().pods, gameState.enemyState().pods, solution);
+        PodState enemyPodState[TURNS][2] ;
+        train(gameState.ourState().pods, gameState.enemyState().pods, solution, enemyPodState[0], false);
         if(gameState.turn == 0) {
             solution[0].o1.boostEnabled = true;
             solution[0].o1.shieldEnabled = false;
@@ -468,7 +503,7 @@ void AnnealingBot<TURNS>::randomSolution(PairOutput sol[]) {
 }
 
 template<int TURNS>
-void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[]) {
+void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState opponentPods[], PairOutput solution[], PodState* enemyPodState) {
     ourSimHistory[0][0] = podsToTrain[0];
     ourSimHistory[0][1] = podsToTrain[1];
     enemySimHistory[0][0] = opponentPods[0];
@@ -571,6 +606,7 @@ void AnnealingBot<TURNS>::_train(const PodState podsToTrain[], const PodState op
 //    cerr << "Moving: (thrust, angle)  " << " (" << solution[0].o1.thrust << ", " << physics.radToDegrees(solution[0].o1.angle) << ")   " << endl
 //         << "Expecting state: (pos, vel, cp)   " << next.pos << "   " << next.vel << "   " << next.nextCheckpoint << endl;
     memcpy(previousSolution, solution, TURNS*sizeof(PairOutput));
+    memcpy(enemyPodState, enemySimHistory, TURNS*sizeof(PodState)*2);
     hasPrevious = true;
 }
 
