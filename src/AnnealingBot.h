@@ -824,8 +824,8 @@ void AnnealingBot<TURNS>::simulate(SimBot* pods1Sim, SimBot* pods2Sim, int turns
         allPods[1] = &ourSimHistory[i+1][1];
         allPods[2] = &enemySimHistory[i+1][0];
         allPods[3] = &enemySimHistory[i+1][1];
-        pods1Sim->move(ourSimHistory[i+1], enemySimHistory[i+1]);
-        pods2Sim->move(enemySimHistory[i+1], ourSimHistory[i+1]);
+        pods1Sim->move(ourSimHistory[i+1], enemySimHistory[i]);
+        pods2Sim->move(enemySimHistory[i+1], ourSimHistory[i]);
         physics.simulate(allPods);
     }
 }
