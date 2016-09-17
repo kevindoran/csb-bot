@@ -22,6 +22,7 @@ struct ScoreFactors {
     float passCPBonus;
     float progressToCP;
     float enemyProgress;
+    float tangentVelBonus;
     // Bouncer
     float overallBouncer;
     float enemyDist;
@@ -37,19 +38,20 @@ struct ScoreFactors {
 
 static ScoreFactors defaultFactors = {
         1,    // overallRacer
-        3439, // passCPBonus
-        1.91,    // progressToCP
-        -0.625, // enemyProgress
+        202, // passCPBonus
+        1.14,    // progressToCP
+        -0.80, // enemyProgress
+        20, // tangentVelocityBonus
         1,    // overallBouncer
         -0.280, // enemyDist
-        1.99, // enemyDistToCP
-        -1.07,  // bouncerDistToCP
-        -0.539,  // angleSeenByCP
-        -0.676,  // angleSeenByEnemy
+        1.87, // enemyDistToCP
+        -1.47,  // bouncerDistToCP
+        -0.78,  // angleSeenByCP
+        -0.134,  // angleSeenByEnemy
         -0.528,  // bouncerTurnAngle
-        -1.56,  // enemyTurn angle
+        -0.448,  // enemyTurn angle
         -4918,   // checkpoint penalty
-        -381   // shield penalty
+        -300  // shield penalty
 };
 
 
@@ -617,16 +619,27 @@ float AnnealingBot<TURNS>::score(const PodState* pods[], const PodState* podsPre
     // Racer
     float racerScore = progress(pods[0], podsPrev[0]);
     float chaserScore = 0;
-    if(pods[0]->turnsSinceCP > 55 && !enemyPods[0]->passedCheckpoints >= race.totalCPCount() - 2) {
-        chaserScore -=  0.4*Vector::dist(pods[0]->pos, pods[1]->pos);
-        chaserScore += 0.6*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
+    if(min(enemyPodsPrev[0]->turnsSinceCP, enemyPodsPrev[1]->turnsSinceCP) < podsPrev[0]->turnsSinceCP && podsPrev[0]->turnsSinceCP > 50 + TURNS && enemyPods[0]->passedCheckpoints < race.totalCPCount() - 1) {
+        chaserScore -=  0.6*Vector::dist(pods[0]->pos, pods[1]->pos);
+        chaserScore += 0.4*Vector::dist(enemyPods[1]->pos, pods[0]->pos);
         chaserScore += 0.2*Vector::dist(enemyPods[0]->pos, pods[0]->pos);
     } else {
         chaserScore = bouncerScore(pods[1], enemyPods[0], enemyPodsPrev[0]);
         racerScore += sFactors.enemyProgress*progress(enemyPods[0], enemyPodsPrev[0]);
     }
+    // Testing
     Vector toCPTangent = (race.checkpoints[pods[0]->nextCheckpoint] - pods[0]->pos).tanget().normalize();
-    racerScore += min(3000.0f, 50*abs((toCPTangent.project(pods[0]->vel) - toCPTangent.project(enemyPods[1]->vel)).getLengthSq()));
+    if(Vector::distSq(enemyPods[1]->pos, race.checkpoints[pods[0]->nextCheckpoint]) < Vector::distSq(pods[0]->pos, race.checkpoints[pods[0]->nextCheckpoint]) + 1000 && Vector::distSq(enemyPods[1]->pos, pods[0]->pos) < 7500*7500) {
+        racerScore += min(3500.0f, sFactors.tangentVelBonus * abs((toCPTangent.project(pods[0]->vel) - toCPTangent.project(enemyPods[1]->vel)).getLength()));
+    }
+//    int startCP = podsPrev[0]->nextCheckpoint;
+//    if(Vector::distSq(enemyPodsPrev[1]->pos, race.checkpoints[startCP]) < Vector::distSq(podsPrev[0]->pos, race.checkpoints[startCP]) && Vector::distSq(enemyPodsPrev[1]->pos, podsPrev[0]->pos) < 3000*3000) {
+//        for(int i = 0; i < TURNS; i++) {
+//            if(ourSimHistory[i+1][0].nextCheckpoint != startCP || Vector::distSq(enemySimHistory[i+1][1].pos, race.checkpoints[startCP]) > Vector::distSq(ourSimHistory[i+1][0].pos, race.checkpoints[startCP])+400) {
+//                racerScore += 300 * (TURNS - i);
+//            }
+//        }
+//    }
     float score = 200000-(racerScore*sFactors.overallRacer + chaserScore*sFactors.overallBouncer);
     return score;
 }
@@ -654,7 +667,7 @@ float AnnealingBot<TURNS>::progress(const PodState* pod, const PodState* previou
 //        progress += sFactors.progressToCP * race.distFromPrevCP(i);
 //        i = race.followingCheckpoint(i);
 //    }
-    progress -= max(0, TURNS -pod->turnsSinceShield)*330;
+    progress -= max(0, SHIELD_COOLDOWN -pod->turnsSinceShield)*200;
     return progress;
 }
 
@@ -674,7 +687,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     float score = 0;
     int targetCP = target->nextCheckpoint;
     bool next = false;
-    if(targetPrev->passedCheckpoints != race.totalCPCount() -1 && Vector::dist(bouncer->pos, race.checkpoints[targetPrev->nextCheckpoint]) > Vector::dist(targetPrev->pos, race.checkpoints[targetPrev->nextCheckpoint]) + 1700) {
+    if(targetPrev->passedCheckpoints != race.totalCPCount() -1 && Vector::dist(bouncer->pos, race.checkpoints[targetPrev->nextCheckpoint]) > Vector::dist(targetPrev->pos, race.checkpoints[targetPrev->nextCheckpoint]) + 1800) {
         targetCP = race.followingCheckpoint(targetPrev->nextCheckpoint);
         next = true;
     }
@@ -691,6 +704,7 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
     score +=
              sFactors.bouncerDistToCP * (-4000 + min(MAX_DIST, bouncerCPDiff.getLength())) +
              sFactors.bouncerTurnAngle * bouncerTurnAngle;
+    score += max(0, SHIELD_COOLDOWN-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
 
     if(!next) {
         score += sFactors.enemyDistToCP * (-4000 + min(MAX_DIST, enemyCPDiff.getLength())) +
@@ -701,7 +715,8 @@ float AnnealingBot<TURNS>::bouncerScore(const PodState *bouncer, const PodState 
                 sFactors.checkpointPenalty * checkpointPenalty;
     }
     // Test
-    score += max(0, TURNS-bouncer->turnsSinceShield) * sFactors.shieldPenalty;
+//    score += ourSimHistory[0][1].nextCheckpoint != ourSimHistory[TURNS][1].nextCheckpoint ? 200 : 0;
+
 //    if(!(score <= 0 || score >= 0)) {
 //        cerr << "NaN for bouncer score." << endl;
 //        cerr << "angleSeenByCP " << angleSeenByCP << endl;

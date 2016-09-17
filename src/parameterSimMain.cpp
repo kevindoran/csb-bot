@@ -116,6 +116,7 @@ string printScoreFactors(ScoreFactors sf) {
     out << "Pass CP bonus: " << sf.passCPBonus << endl;
     out << "Progress to CP: " << sf.progressToCP << endl;
     out << "Enemy progress: " << sf.enemyProgress << endl;
+    out << "Tangent vel bonus: " << sf.tangentVelBonus << endl;
     out << "Overall bouncer: " << sf.overallBouncer << endl;
     out << "Enemy dist: " << sf.enemyDist << endl;
     out << "Enemy dist to CP: " << sf.enemyDistToCP << endl;
@@ -137,6 +138,7 @@ ScoreFactors generateScoreFactor() {
     sf.passCPBonus = rand() % (6000 + 1);
     sf.progressToCP = (2.0 * (float) rand()) / RAND_MAX;
     sf.enemyProgress = -(1.0 * (float) rand()) / RAND_MAX;
+    sf.tangentVelBonus = (200 * (float) rand()) / RAND_MAX;
     sf.overallBouncer = 1;
     sf.enemyDist        = -(2.0 * (float) rand()) / RAND_MAX;
     sf.enemyDistToCP    =  (2.0 * (float) rand()) / RAND_MAX;
@@ -156,6 +158,7 @@ ScoreFactors testScoreFactors() {
     sf.passCPBonus = 2000;
     sf.progressToCP = 1.0;
     sf.enemyProgress = -0.4;
+    sf.tangentVelBonus = 40;
     sf.overallBouncer = 1;
     sf.enemyDist = -0.0522;
     sf.enemyDistToCP = 0.359;
@@ -175,6 +178,7 @@ ScoreFactors startingSFs() {
     sf.passCPBonus = 4276;
     sf.progressToCP = 1.91;
     sf.enemyProgress = -0.932;
+    sf.tangentVelBonus = 40;
     sf.overallBouncer = 1;
     sf.enemyDist = -0.079;
     sf.enemyDistToCP = 1.41;
@@ -193,27 +197,29 @@ ScoreFactors randomAlter(ScoreFactors sf) {
     float flip = (float) rand() / RAND_MAX;
     if(sw < 1.0/11.0) {
         sf.passCPBonus = rand() % (6000 + 1);
-    } else if(sw < 2.0/12.0) {
+    } else if(sw < 2.0/13.0) {
         sf.progressToCP = (2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 3.0/12.0) {
-        sf.enemyProgress    = -(1.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 4.0/12.0) {
+    } else if(sw < 3.0/13.0) {
+        sf.enemyProgress = -(1.0 * (float) rand()) / RAND_MAX;
+    } else if(sw < 4.0/13.0) {
+        sf.tangentVelBonus = (200 * (float) rand()) / RAND_MAX;
+    } else if(sw < 5.0/13.0) {
         sf.enemyDist    =     -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 5.0/12.0) {
+    } else if(sw < 6.0/13.0) {
         sf.enemyDistToCP    =  (2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 6.0/12.0) {
+    } else if(sw < 7.0/13.0) {
         sf.bouncerDistToCP  = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 7.0/12.0) {
+    } else if(sw < 8.0/13.0) {
         sf.angleSeenByEnemy = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 8.0/12.0) {
+    } else if(sw < 9.0/13.0) {
         sf.angleSeenByCP    = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 9.0/12.0) {
+    } else if(sw < 10.0/13.0) {
         sf.bouncerTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 10.0/12.0) {
+    } else if(sw < 11.0/13.0) {
         sf.enemyTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
-    } else if(sw < 11.0/12.0) {
+    } else if(sw < 12.0/13.0) {
         sf.checkpointPenalty = -(rand() % (6000 + 1));
-    } else if(sw < 12.0/12.0) {
+    } else if(sw < 13.0/13.0) {
         sf.shieldPenalty = -(rand() % (1000 + 1));
     }
     return sf;
@@ -313,7 +319,7 @@ ScoreFactors optimize() {
     for(int i = 0; i < WORKER_COUNT; i++) {
         workers.push_back(thread(multiGameWorker));
     }
-    ScoreFactors current = startingSFs();
+    ScoreFactors current = AnnealingBot().sFactors;//startingSFs();
     double currentScore = runMultiGame(current);
     double bestScore = currentScore;
     ScoreFactors bestFactors = current;
