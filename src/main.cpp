@@ -16,7 +16,7 @@ int main() {
     Physics physics(race);
     std::srand(std::time(0));
 
-    AnnealingBot<6> bot(race, 108);
+    AnnealingBot<5> bot(race, 109);
 //    AnnealingBot<4> botFake(race, 30);
     AnnealingBot<4> enemyBot(race, 39);
     // Game loop.
@@ -28,7 +28,8 @@ int main() {
         // Train opponent.
         PairOutput enemySolution[4];
         PodState ourStateExpectedByEnemy[4][2];
-        enemyBot.train(state.game().enemyState().pods, state.game().ourState().pods, enemySolution, ourStateExpectedByEnemy[0], true);
+//        enemyBot.sFactors.skirtBonus = 0;
+        enemyBot.train(state.game().enemyState().pods, state.game().ourState().pods, enemySolution, ourStateExpectedByEnemy[0]);
         static int startFromTurn = 0;
         CustomAIWithBackup<4> enemyAI(race, enemySolution, ourStateExpectedByEnemy, startFromTurn);
         enemyAI.setDefaultAfter(4);

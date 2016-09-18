@@ -145,7 +145,7 @@ public:
             AnnealingBot<5> bouncerBotFake(race, 40);
             bouncerBotFake.sFactors.overallRacer = 0;
             PodState stateExpected[5][2];
-            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution, stateExpected[0], true);
+            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution, stateExpected[0]);
             CustomAIWithBackup<5> bouncerAI(race, bouncerSolution, stateExpected, 0);
             bouncerAI.setDefaultAfter(5);
             AnnealingBot<6> racerBot(race, 80, &bouncerAI);
@@ -157,7 +157,7 @@ public:
             AnnealingBot<5> racerBotFake(race, 40);
             racerBotFake.sFactors.overallBouncer = 0;
             PodState stateExpected2[5][2];
-            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution, stateExpected[0], true);
+            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution, stateExpected[0]);
             CustomAIWithBackup<5> racerAI(race, racerSolution, stateExpected2, 0);
             racerAI.setDefaultAfter(5);
             AnnealingBot<6> bouncerBot(race, 80, &racerAI);
@@ -243,7 +243,7 @@ public:
             AnnealingBot<5> bouncerBotFake(race, 25);
 //            bouncerBotFake.isControl = true;
             PodState stateExpected[5][2];
-            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution, stateExpected[0], true);
+            bouncerBotFake.train(aGS.enemyState().pods, aGS.ourState().pods, bouncerSolution, stateExpected[0]);
             CustomAIWithBackup<5> bouncerAI(race, bouncerSolution, stateExpected, 0);
             bouncerAI.setDefaultAfter(5);
             AnnealingBot<6> racerBot(race, 70, &bouncerAI);
@@ -254,7 +254,7 @@ public:
             AnnealingBot<5> racerBotFake(race, 25);
             racerBotFake.sFactors = sFactors;
             PodState stateExpected2[5][2];
-            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution, stateExpected2[0], true);
+            racerBotFake.train(bGS.enemyState().pods, bGS.ourState().pods, racerSolution, stateExpected2[0]);
             CustomAIWithBackup<5> racerAI(race, racerSolution, stateExpected2, 0);
             racerAI.setDefaultAfter(5);
             AnnealingBot<6> bouncerBot(race, 70, &racerAI);

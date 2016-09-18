@@ -382,7 +382,7 @@ public:
     float score(const PodState *pods[], const PodState *podsPrev[], const PodState *enemyPods[],
                 const PodState *enemyPodsPrev[]);
 
-    void train(const PodState pods[], const PodState enemyPods[], PairOutput solution[], PodState* enemyPodState, bool placeRacerFirst) {
+    bool train(const PodState pods[], const PodState enemyPods[], PairOutput solution[], PodState* enemyPodState) {
         init();
         PodState ourPodsCopy[POD_COUNT];
         PodState enemyPodsCopy[POD_COUNT];
@@ -391,7 +391,57 @@ public:
         bool switched = physics.orderByProgress(ourPodsCopy);
         physics.orderByProgress(enemyPodsCopy);
         _train(ourPodsCopy, enemyPodsCopy, solution, enemyPodState);
-        if (!placeRacerFirst && switched) {
+        return switched;
+    }
+
+    PairOutput move(GameState& gameState) {
+        PairOutput solution[TURNS];
+//        if(gameState.turn == 0) {
+//            gameState.ourState().pods[0].vel += (race.checkpoints[1] - gameState.ourState().pods[0].pos).normalize() * BOOST_ACC;
+//            gameState.ourState().pods[1].vel += (race.checkpoints[1] - gameState.ourState().pods[1].pos).normalize() * BOOST_ACC;
+//            gameState.enemyState().pods[0].vel += (race.checkpoints[1] - gameState.enemyState().pods[0].pos).normalize() * BOOST_ACC;
+//            gameState.enemyState().pods[1].vel += (race.checkpoints[1] - gameState.enemyState().pods[1].pos).normalize() * BOOST_ACC;
+//        }
+        PodState enemyPodState[TURNS][2] ;
+        bool switched = train(gameState.ourState().pods, gameState.enemyState().pods, solution, enemyPodState[0]);
+        // Enable boost
+        PodState bouncer = gameState.ourState().pods[1];
+        PodState racer = gameState.ourState().pods[0];
+        PodState enemyRacer = gameState.enemyState().pods[0];
+        // Racer
+        if(gameState.ourState().pods[0].boostAvailable &&
+                solution[0].o1.thrust == MAX_THRUST && solution[0].o1.thrust == MAX_THRUST) {
+            bool shieldUsed = false;
+            for(int i = 0; i < TURNS; i++) {
+                if(solution[TURNS].o1.shieldEnabled) {
+                    shieldUsed = true;
+                    break;
+                }
+            }
+            if(!shieldUsed) {
+                static constexpr float minimumDistFactor = 0.7f;
+                static constexpr float boostAngleLimit = M_PI * (5.0f / 180.0f);
+                float distThreshold = gameState.race.maxCheckpointDist * minimumDistFactor;
+                if(Vector::dist(race.checkpoints[racer.nextCheckpoint], racer.pos) > distThreshold) {
+                    if(abs(physics.turnAngle(racer, race.checkpoints[racer.nextCheckpoint]) < boostAngleLimit)) {
+                        solution[0].o1.boostEnabled = true;
+                    }
+                }
+            }
+        }
+        // Bouncer
+        if(gameState.ourState().pods[1].boostAvailable) {
+            if(!solution[0].o2.shieldEnabled && solution[0].o2.thrust == MAX_THRUST && solution[1].o2.shieldEnabled) {
+                if(Vector::distSq(bouncer.pos, enemyRacer.pos) < 3000*3000) {
+                    static constexpr float boostAngleLimit = M_PI * (5.0f / 180.0f);
+                    if (abs(physics.turnAngle(bouncer, enemyRacer.pos) < boostAngleLimit) &&
+                        abs(physics.turnAngle(enemyRacer, bouncer.pos)) < 2 * boostAngleLimit) {
+                        solution[0].o2.boostEnabled = true;
+                    }
+                }
+            }
+        }
+        if (switched) {
             PodOutputSim temp;
             for(int i = 0; i < TURNS; i++) {
                 temp = solution[i].o1;
@@ -399,25 +449,12 @@ public:
                 solution[i].o2 = temp;
             }
         }
+        return solution[0];
     }
 
-    PairOutput move(GameState& gameState) {
-        PairOutput solution[TURNS];
-        if(gameState.turn == 0) {
-            gameState.ourState().pods[0].vel += (race.checkpoints[1] - gameState.ourState().pods[0].pos).normalize() * BOOST_ACC;
-            gameState.ourState().pods[1].vel += (race.checkpoints[1] - gameState.ourState().pods[1].pos).normalize() * BOOST_ACC;
-            gameState.enemyState().pods[0].vel += (race.checkpoints[1] - gameState.enemyState().pods[0].pos).normalize() * BOOST_ACC;
-            gameState.enemyState().pods[1].vel += (race.checkpoints[1] - gameState.enemyState().pods[1].pos).normalize() * BOOST_ACC;
-        }
-        PodState enemyPodState[TURNS][2] ;
-        train(gameState.ourState().pods, gameState.enemyState().pods, solution, enemyPodState[0], false);
-        if(gameState.turn == 0) {
-            solution[0].o1.boostEnabled = true;
-            solution[0].o1.shieldEnabled = false;
-            solution[0].o2.boostEnabled = true;
-            solution[0].o2.shieldEnabled = false;
-        }
-        return solution[0];
+    static PodOutputSim getByIdx(PairOutput po, int i) {
+        if(i == 0) return po.o1;
+        else return po.o2;
     }
 
 
