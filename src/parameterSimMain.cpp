@@ -116,7 +116,7 @@ string printScoreFactors(ScoreFactors sf) {
     out << "Pass CP bonus: " << sf.passCPBonus << endl;
     out << "Progress to CP: " << sf.progressToCP << endl;
     out << "Enemy progress: " << sf.enemyProgress << endl;
-    out << "Tangent vel bonus: " << sf.tangentVelBonus << endl;
+    out << "Early pass bonus: " << sf.earlyPassBonus << endl;
     out << "Overall bouncer: " << sf.overallBouncer << endl;
     out << "Enemy dist: " << sf.enemyDist << endl;
     out << "Enemy dist to CP: " << sf.enemyDistToCP << endl;
@@ -126,6 +126,7 @@ string printScoreFactors(ScoreFactors sf) {
     out << "Bouncer turn angle: " << sf.bouncerTurnAngle << endl;
     out << "Enemy turn angle: " << sf.enemyTurnAngle << endl;
     out << "Checkpoint penalty: " << sf.checkpointPenalty << endl;
+    out << "Skirt bonus: " << sf.skirtBonus << endl;
     out << "Shield penalty: " << sf.shieldPenalty << endl;
     out << endl;
     return out.str();
@@ -138,7 +139,7 @@ ScoreFactors generateScoreFactor() {
     sf.passCPBonus = rand() % (6000 + 1);
     sf.progressToCP = (2.0 * (float) rand()) / RAND_MAX;
     sf.enemyProgress = -(1.0 * (float) rand()) / RAND_MAX;
-    sf.tangentVelBonus = (200 * (float) rand()) / RAND_MAX;
+    sf.earlyPassBonus = (6000 * (float) rand()) / RAND_MAX;
     sf.overallBouncer = 1;
     sf.enemyDist        = -(2.0 * (float) rand()) / RAND_MAX;
     sf.enemyDistToCP    =  (2.0 * (float) rand()) / RAND_MAX;
@@ -148,6 +149,7 @@ ScoreFactors generateScoreFactor() {
     sf.bouncerTurnAngle = -(2.0 * (float) rand()) / RAND_MAX;
     sf.enemyTurnAngle   = -(2.0 * (float) rand()) / RAND_MAX;
     sf.checkpointPenalty = -(rand() % (6000 + 1));
+    sf.skirtBonus = (6000 * (float) rand()) / RAND_MAX;
     sf.shieldPenalty = -(rand() % (1000 + 1));
     return sf;
 }
@@ -158,7 +160,7 @@ ScoreFactors testScoreFactors() {
     sf.passCPBonus = 2000;
     sf.progressToCP = 1.0;
     sf.enemyProgress = -0.4;
-    sf.tangentVelBonus = 40;
+    sf.earlyPassBonus = 2000;
     sf.overallBouncer = 1;
     sf.enemyDist = -0.0522;
     sf.enemyDistToCP = 0.359;
@@ -202,7 +204,7 @@ ScoreFactors randomAlter(ScoreFactors sf) {
     } else if(sw < 3.0/13.0) {
         sf.enemyProgress = -(1.0 * (float) rand()) / RAND_MAX;
     } else if(sw < 4.0/13.0) {
-        sf.tangentVelBonus = (200 * (float) rand()) / RAND_MAX;
+        sf.earlyPassBonus = (6000 * (float) rand()) / RAND_MAX;
     } else if(sw < 5.0/13.0) {
         sf.enemyDist    =     -(2.0 * (float) rand()) / RAND_MAX;
     } else if(sw < 6.0/13.0) {
@@ -220,6 +222,24 @@ ScoreFactors randomAlter(ScoreFactors sf) {
     } else if(sw < 12.0/13.0) {
         sf.checkpointPenalty = -(rand() % (6000 + 1));
     } else if(sw < 13.0/13.0) {
+        sf.shieldPenalty = -(rand() % (1000 + 1));
+    }
+    return sf;
+}
+
+ScoreFactors randomAlter2(ScoreFactors sf) {
+    float sw = (float) rand() / RAND_MAX;
+    if(sw < 1.0/6.0) {
+        sf.passCPBonus = rand() % (6000 + 1);
+    } else if(sw < 2.0/6.0) {
+        sf.progressToCP = (2.0 * (float) rand()) / RAND_MAX;
+    } else if(sw < 3.0/6.0) {
+        sf.earlyPassBonus = (6000 * (float) rand()) / RAND_MAX;
+    } else if(sw < 4.0/6.0) {
+        sf.skirtBonus = (6000 * (float) rand()) / RAND_MAX;
+    } else if(sw > 5.0/6.0) {
+        sf.checkpointPenalty = -(rand() % (6000 + 1));
+    } else if(sw < 1) {
         sf.shieldPenalty = -(rand() % (1000 + 1));
     }
     return sf;
@@ -336,7 +356,8 @@ ScoreFactors optimize() {
         for(int j = 0; j < neighorhoodSize;) {
             // Feed the workers.
             for(int y = 0; y < WORKER_COUNT; y++) {
-                ScoreFactors altered = randomAlter(current);
+//                ScoreFactors altered = randomAlter(current);
+                ScoreFactors altered = randomAlter2(current);
                 Job job = {false, altered, temp, currentScore};
                 jobQueue.push(job);
             }
@@ -349,7 +370,8 @@ ScoreFactors optimize() {
                 }
                 // Start up more jobs until one is accepted.
                 if(accepted.empty()) {
-                    ScoreFactors altered = randomAlter(current);
+//                    ScoreFactors altered = randomAlter(current);
+                    ScoreFactors altered = randomAlter2(current);
                     Job job = {false, altered, temp, currentScore};
                     jobQueue.push(job);
                 }
